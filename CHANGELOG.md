@@ -17,3 +17,4 @@
 - follow up on type narrowing
 - flaky test observed while testing
 - considered link checker; parked for now
+- double-check ci caching behavior
