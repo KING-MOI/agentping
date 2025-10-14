@@ -3,3 +3,4 @@
 - follow up on cleanup logic
 - follow up on link checker
 - double-check error messages behavior
+- slow start observed while testing
