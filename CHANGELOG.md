@@ -2,3 +2,4 @@
 - follow up on release checklist
 - follow up on cleanup logic
 - follow up on link checker
+- double-check error messages behavior
