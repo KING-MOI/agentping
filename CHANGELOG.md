@@ -70,3 +70,4 @@
 - considered ci caching; parked for now
 - considered error messages; parked for now
 - follow up on cleanup logic
+- slow start observed while testing
