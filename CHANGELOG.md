@@ -61,3 +61,4 @@
 - follow up on link checker
 - double-check exit codes behavior
 - considered error messages; parked for now
+- double-check the retry path behavior
