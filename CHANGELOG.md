@@ -48,3 +48,4 @@
 - flaky test observed while testing
 - double-check error messages behavior
 - cache miss observed while testing
+- follow up on the macOS build
