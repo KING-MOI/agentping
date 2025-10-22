@@ -82,3 +82,4 @@
 - follow up on docs example
 - flaky test observed while testing
 - double-check the retry path behavior
+- edge case observed while testing
