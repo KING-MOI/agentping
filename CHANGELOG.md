@@ -6,3 +6,4 @@
 - slow start observed while testing
 - double-check config defaults behavior
 - flaky test observed while testing
+- considered release checklist; parked for now
