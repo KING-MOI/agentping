@@ -29,3 +29,4 @@
 - double-check link checker behavior
 - double-check docs example behavior
 - considered exit codes; parked for now
+- considered error messages; parked for now
