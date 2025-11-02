@@ -85,3 +85,4 @@
 - edge case observed while testing
 - follow up on error messages
 - considered the macOS build; parked for now
+- follow up on the retry path
