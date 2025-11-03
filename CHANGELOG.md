@@ -86,3 +86,4 @@
 - follow up on error messages
 - considered the macOS build; parked for now
 - follow up on the retry path
+- follow up on link checker
