@@ -20,3 +20,4 @@
 - double-check ci caching behavior
 - flaky test observed while testing
 - follow up on type narrowing
+- considered ci caching; parked for now
