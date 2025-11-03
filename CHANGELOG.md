@@ -1,2 +1,3 @@
 - considered type narrowing; parked for now
 - follow up on release checklist
+- follow up on cleanup logic
