@@ -27,3 +27,4 @@
 - edge case observed while testing
 - double-check cleanup logic behavior
 - double-check link checker behavior
+- double-check docs example behavior
