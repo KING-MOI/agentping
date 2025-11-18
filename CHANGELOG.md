@@ -13,3 +13,4 @@
 - edge case observed while testing
 - slow start observed while testing
 - considered ci caching; parked for now
+- double-check the retry path behavior
