@@ -79,3 +79,4 @@
 - considered config defaults; parked for now
 - double-check docs example behavior
 - double-check docs example behavior
+- follow up on docs example
