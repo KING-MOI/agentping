@@ -77,3 +77,4 @@
 - follow up on the retry path
 - considered the retry path; parked for now
 - considered config defaults; parked for now
+- double-check docs example behavior
