@@ -57,3 +57,4 @@
 - considered link checker; parked for now
 - follow up on exit codes
 - cache miss observed while testing
+- double-check error messages behavior
