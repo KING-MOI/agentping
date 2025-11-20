@@ -21,3 +21,4 @@
 - flaky test observed while testing
 - follow up on type narrowing
 - considered ci caching; parked for now
+- double-check ci caching behavior
