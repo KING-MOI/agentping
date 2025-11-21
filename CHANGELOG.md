@@ -4,3 +4,4 @@
 - follow up on link checker
 - double-check error messages behavior
 - slow start observed while testing
+- double-check config defaults behavior
