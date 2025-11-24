@@ -58,3 +58,4 @@
 - follow up on exit codes
 - cache miss observed while testing
 - double-check error messages behavior
+- follow up on link checker
