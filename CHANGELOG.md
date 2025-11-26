@@ -15,3 +15,4 @@
 - considered ci caching; parked for now
 - double-check the retry path behavior
 - follow up on type narrowing
+- flaky test observed while testing
