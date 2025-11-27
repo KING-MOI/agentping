@@ -9,3 +9,4 @@
 - considered release checklist; parked for now
 - double-check ci caching behavior
 - flaky test observed while testing
+- considered type narrowing; parked for now
