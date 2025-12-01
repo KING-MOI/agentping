@@ -64,3 +64,4 @@
 - double-check the retry path behavior
 - double-check type narrowing behavior
 - follow up on exit codes
+- follow up on exit codes
