@@ -63,3 +63,4 @@
 - considered error messages; parked for now
 - double-check the retry path behavior
 - double-check type narrowing behavior
+- follow up on exit codes
