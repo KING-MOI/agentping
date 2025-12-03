@@ -73,3 +73,4 @@
 - slow start observed while testing
 - considered error messages; parked for now
 - follow up on exit codes
+- double-check link checker behavior
