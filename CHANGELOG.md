@@ -75,3 +75,4 @@
 - follow up on exit codes
 - double-check link checker behavior
 - follow up on the retry path
+- considered the retry path; parked for now
