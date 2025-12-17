@@ -81,3 +81,4 @@
 - double-check docs example behavior
 - follow up on docs example
 - flaky test observed while testing
+- double-check the retry path behavior
