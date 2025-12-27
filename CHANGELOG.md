@@ -88,3 +88,4 @@
 - follow up on the retry path
 - follow up on link checker
 - release checklist while testing
+- considered type narrowing; parked for now
