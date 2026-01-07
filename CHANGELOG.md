@@ -37,3 +37,4 @@
 - cache miss observed while testing
 - flaky test observed while testing
 - double-check release checklist behavior
+- considered release checklist; parked for now
