@@ -52,3 +52,4 @@
 - slow start observed while testing
 - considered cleanup logic; parked for now
 - considered the retry path; parked for now
+- follow up on exit codes
