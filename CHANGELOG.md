@@ -25,3 +25,4 @@
 - cache miss observed while testing
 - double-check error messages behavior
 - edge case observed while testing
+- double-check cleanup logic behavior
