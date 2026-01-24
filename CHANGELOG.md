@@ -60,3 +60,4 @@
 - double-check error messages behavior
 - follow up on link checker
 - double-check exit codes behavior
+- considered error messages; parked for now
