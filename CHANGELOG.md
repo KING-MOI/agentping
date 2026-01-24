@@ -1,1 +1,2 @@
 - considered type narrowing; parked for now
+- follow up on release checklist
