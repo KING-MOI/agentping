@@ -22,3 +22,4 @@
 - follow up on type narrowing
 - considered ci caching; parked for now
 - double-check ci caching behavior
+- cache miss observed while testing
