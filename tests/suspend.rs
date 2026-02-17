@@ -2,8 +2,8 @@
 //! must neither stretch `--timeout` nor leave a long-poll stalled across the
 //! sleep holding back a completion.
 //!
-//! Real suspends cannot happen in a test. `T3_WATCH_TEST_SUSPEND_FILE`
-//! adds the number of milliseconds in a file to t3-watch's suspend-inclusive
+//! Real suspends cannot happen in a test. `AGENTPING_TEST_SUSPEND_FILE`
+//! adds the number of milliseconds in a file to agentping's suspend-inclusive
 //! clock, which is what a resume looks like to it: that clock jumps ahead
 //! while the awake clock does not.
 
@@ -47,7 +47,7 @@ fn a_suspend_longer_than_the_timeout_ends_the_wait_at_once() {
         args.push(T);
         let child = env
             .cmd(&args)
-            .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+            .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
             .spawn()
             .unwrap();
         std::thread::sleep(Duration::from_millis(1500));
@@ -90,7 +90,7 @@ fn a_long_poll_stalled_across_a_suspend_is_restarted_on_resume() {
         args.push(T);
         let child = env
             .cmd(&args)
-            .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+            .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
             .spawn()
             .unwrap();
         let deadline = Instant::now() + Duration::from_secs(10);
@@ -128,7 +128,7 @@ fn run_id(thread: &str, n: u64) -> String {
 fn settled_hooks(hook: &MockHook) -> usize {
     hook.requests()
         .iter()
-        .filter(|r| r.headers.get("x-t3-watch-event").map(String::as_str) == Some("settled"))
+        .filter(|r| r.headers.get("x-agentping-event").map(String::as_str) == Some("settled"))
         .count()
 }
 
@@ -165,7 +165,7 @@ fn an_answer_from_before_a_suspend_never_completes_the_wait() {
         args.push(W);
         let mut child = env
             .cmd(&args)
-            .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+            .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
             .spawn()
             .unwrap();
         let what = format!("daemon={daemon} timeout={timeout}");
@@ -246,7 +246,7 @@ fn a_local_answer_from_before_a_suspend_never_completes_the_wait() {
         args.push(L);
         let mut child = env
             .cmd(&args)
-            .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+            .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
             .spawn()
             .unwrap();
         let what = format!("daemon={daemon} timeout={timeout}");
@@ -300,7 +300,7 @@ fn a_daemon_lost_after_a_suspend_never_restarts_the_timeout() {
         suspend(&clock, 0);
         let child = env
             .cmd(&["wait", "--timeout", "10m", T])
-            .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+            .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
             .spawn()
             .unwrap();
         let s = env.wait_status("the wait to register", Duration::from_secs(10), |s| {
@@ -465,7 +465,7 @@ fn an_answer_buffered_across_a_suspend_never_completes_the_wait() {
         suspend(&clock, 0);
         let mut daemon = env
             .cmd(&["daemon", "--idle-exit", "60s"])
-            .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+            .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
             .spawn()
             .unwrap();
         env.wait_status("daemon", Duration::from_secs(10), |s| s["running"] == true);
@@ -485,8 +485,8 @@ fn an_answer_buffered_across_a_suspend_never_completes_the_wait() {
                 &hook.url,
                 W,
             ])
-            .env("T3_WATCH_SOCKET", &proxy_sock)
-            .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+            .env("AGENTPING_SOCKET", &proxy_sock)
+            .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
             .spawn()
             .unwrap();
         let what = format!("frozen={frozen} timeout={timeout}");
@@ -578,7 +578,7 @@ fn a_final_answer_read_after_the_deadline_is_not_used() {
             &hook.url,
             W,
         ])
-        .env("T3_WATCH_SOCKET", &proxy_sock)
+        .env("AGENTPING_SOCKET", &proxy_sock)
         .spawn()
         .unwrap();
     until("the daemon's answer", || proxy.held.load(Ordering::SeqCst));
@@ -608,7 +608,7 @@ fn a_frame_trickling_in_never_holds_back_the_suspend_and_deadline_checks() {
     suspend(&clock, 0);
     let mut daemon = env
         .cmd(&["daemon", "--idle-exit", "60s"])
-        .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+        .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
         .spawn()
         .unwrap();
     env.wait_status("daemon", Duration::from_secs(10), |s| s["running"] == true);
@@ -620,8 +620,8 @@ fn a_frame_trickling_in_never_holds_back_the_suspend_and_deadline_checks() {
     proxy.drip_ms.store(200, Ordering::SeqCst);
     let child = env
         .cmd(&["wait", "--timeout", "10m", W])
-        .env("T3_WATCH_SOCKET", &proxy_sock)
-        .env("T3_WATCH_TEST_SUSPEND_FILE", &clock)
+        .env("AGENTPING_SOCKET", &proxy_sock)
+        .env("AGENTPING_TEST_SUSPEND_FILE", &clock)
         .spawn()
         .unwrap();
     until("the daemon's answer", || proxy.held.load(Ordering::SeqCst));

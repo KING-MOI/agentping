@@ -1,5 +1,5 @@
 [package]
-name = "t3-watch"
+name = "agentping"
 version = "0.16.1"
 edition = "2021"
 rust-version = "1.85"

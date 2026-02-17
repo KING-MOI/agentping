@@ -112,7 +112,7 @@ fn a_daemon_of_another_engine_on_a_custom_socket_is_refused() {
                 &hook.url,
                 T,
             ])
-            .env("T3_WATCH_SOCKET", &sock)
+            .env("AGENTPING_SOCKET", &sock)
             .output()
             .unwrap();
         assert_eq!(out.status.code(), Some(2), "{accepted}: {}", both(&out));
@@ -139,7 +139,7 @@ fn an_answer_without_any_accepted_line_is_not_trusted() {
     let mut lines = completed_by_old_engine(json!(null));
     lines.remove(0);
     fake_daemon(&sock, lines);
-    let out = env.cmd(&["wait", T]).env("T3_WATCH_SOCKET", &sock).output().unwrap();
+    let out = env.cmd(&["wait", T]).env("AGENTPING_SOCKET", &sock).output().unwrap();
     assert_eq!(out.status.code(), Some(2), "{}", both(&out));
     assert_eq!(output_json(&out)["error"]["kind"], "incompatible_daemon");
 }
@@ -229,7 +229,7 @@ fn entries_left_by_an_older_build_are_migrated_only_when_no_client_can_own_them(
     // The old entry moved to this build's outbox and was delivered with its own id.
     let reqs = hook.requests();
     assert_eq!(reqs.len(), 1, "{r}");
-    assert_eq!(reqs[0].headers["x-t3-watch-id"], old_id);
+    assert_eq!(reqs[0].headers["x-agentping-id"], old_id);
     assert!(!legacy.join(format!("{old_id}.json")).exists());
     // A young one may still belong to a running client of that build.
     assert!(legacy.join(format!("{young_id}.json")).exists());
@@ -299,7 +299,7 @@ fn a_young_entry_left_by_a_crashed_old_client_is_kept_pending_and_delivered() {
         assert!(std::time::Instant::now() < deadline, "never delivered");
         std::thread::sleep(Duration::from_millis(200));
     }
-    assert_eq!(hook.requests()[0].headers["x-t3-watch-id"], id);
+    assert_eq!(hook.requests()[0].headers["x-agentping-id"], id);
     // Delivered and nothing left: now it may idle out.
     let deadline = std::time::Instant::now() + Duration::from_secs(20);
     while daemon.try_wait().unwrap().is_none() {
@@ -450,7 +450,7 @@ fn older_builds_entries_are_delivered_where_they_are_never_moved() {
         let sent: Vec<String> = hook
             .requests()
             .iter()
-            .map(|q| q.headers["x-t3-watch-id"].clone())
+            .map(|q| q.headers["x-agentping-id"].clone())
             .collect();
         assert_eq!(sent, [waiting.to_string()], "{store}: {r}");
         // Still where its client looks, with the attempt counted as the
@@ -779,7 +779,7 @@ fn running_engine_5_and_6_senders_are_reported_as_unsafe_for_engine_4_entries() 
     assert!(list["incompatibleSenders"][0]["action"]
         .as_str()
         .unwrap()
-        .contains("t3-watch stop"));
+        .contains("agentping stop"));
 }
 
 #[test]
@@ -848,7 +848,7 @@ fn a_receipt_conversion_cut_short_never_leaves_an_entry_more_exposed_and_is_repa
 
     let cut = env
         .cmd(&["outbox", "run", "--once"])
-        .env("T3_WATCH_TEST_FAULT", "before-receipt-unlink")
+        .env("AGENTPING_TEST_FAULT", "before-receipt-unlink")
         .output()
         .unwrap();
     assert_eq!(cut.status.code(), Some(97), "{}", both(&cut));
@@ -932,7 +932,7 @@ fn every_step_this_build_takes_on_an_engine_4_entry_leaves_it_no_more_exposed() 
         let before = exposed_to(&v2, &start);
         let mut cmd = env.cmd(&["outbox", "run", "--once"]);
         if cut {
-            cmd.env("T3_WATCH_TEST_FAULT", "before-receipt-unlink");
+            cmd.env("AGENTPING_TEST_FAULT", "before-receipt-unlink");
         }
         let out = cmd.output().unwrap();
         let after = entry_at(&v2, id).unwrap_or_else(|| panic!("{case}: entry gone: {}", both(&out)));
@@ -958,26 +958,26 @@ fn a_fence_left_by_0_7_0_is_cleared_so_every_sender_can_lock_the_store() {
 
 #[test]
 fn an_engine_5_daemon_on_the_runtime_socket_is_reported_too() {
-    // Sol: with T3_WATCH_HOME unset, daemons listen under
-    // $XDG_RUNTIME_DIR/t3-watch/, which the report did not look at.
+    // Sol: with AGENTPING_HOME unset, daemons listen under
+    // $XDG_RUNTIME_DIR/agentping/, which the report did not look at.
     let env = Env::new();
     fs::set_permissions(&env.home, fs::Permissions::from_mode(0o700)).unwrap();
     let rt = env.home.join("rt");
-    let sock_dir = rt.join("t3-watch");
+    let sock_dir = rt.join("agentping");
     fs::create_dir_all(&sock_dir).unwrap();
     fs::set_permissions(&sock_dir, fs::Permissions::from_mode(0o700)).unwrap();
     fake_daemon(&sock_dir.join("daemon-e5.sock"), vec![]);
     let out = std::process::Command::new(BIN)
         .args(["outbox", "list"])
-        .env_remove("T3_WATCH_HOME")
-        .env_remove("T3_WATCH_SOCKET")
+        .env_remove("AGENTPING_HOME")
+        .env_remove("AGENTPING_SOCKET")
         .env("XDG_CONFIG_HOME", env.home.join("cfg"))
         .env("XDG_RUNTIME_DIR", &rt)
         .output()
         .unwrap();
     let list = output_json(&out);
     let socket = list["incompatibleSenders"][0]["socket"].as_str().unwrap_or("");
-    assert!(socket.ends_with("rt/t3-watch/daemon-e5.sock"), "{list}");
+    assert!(socket.ends_with("rt/agentping/daemon-e5.sock"), "{list}");
 }
 
 #[test]
@@ -1031,7 +1031,7 @@ fn a_pass_cut_short_has_already_held_every_entry_it_had_not_reached() {
     assert_eq!(before, [vec![4, 6], vec![4, 6]]);
     let cut = env
         .cmd(&["outbox", "run", "--once"])
-        .env("T3_WATCH_TEST_FAULT", "before-receipt-unlink")
+        .env("AGENTPING_TEST_FAULT", "before-receipt-unlink")
         .output()
         .unwrap();
     assert_eq!(cut.status.code(), Some(97), "{}", both(&cut));
@@ -1184,7 +1184,7 @@ fn a_0_7_0_fence_stays_up_until_every_receipt_is_taken_back() {
     fenced_by_0_7_0(&v2);
     let cut = env
         .cmd(&["outbox", "run", "--once"])
-        .env("T3_WATCH_TEST_FAULT", "before-receipt-unlink")
+        .env("AGENTPING_TEST_FAULT", "before-receipt-unlink")
         .output()
         .unwrap();
     assert_eq!(cut.status.code(), Some(97), "{}", both(&cut));

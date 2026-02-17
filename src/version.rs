@@ -14,7 +14,7 @@
 //! builds before receipts did) is refused rather than trusted.
 //!
 //! `REV` is the source revision the binary was built from, set at build time
-//! with `T3_WATCH_BUILD_REV=<git commit>` (release packages always set it);
+//! with `AGENTPING_BUILD_REV=<git commit>` (release packages always set it);
 //! `dev` otherwise.
 
 use serde_json::{json, Value};
@@ -70,7 +70,7 @@ pub const CAPABILITIES: &[&str] = &[
     // not discard the answer already read, and a `t3` binary briefly open
     // for writing (ETXTBSY) is run again rather than losing the poll.
     "linux-io-hardening",
-    // Codex approval requests are also read from the log `t3-watch hook
+    // Codex approval requests are also read from the log `agentping hook
     // codex` keeps as Codex's PermissionRequest hook: one that opened and
     // closed while nothing counted is reported (`recoveredRequests`, the
     // `requests_recovered` progress event), and one that replaced the
@@ -85,7 +85,7 @@ pub const CAPABILITIES: &[&str] = &[
     "suspend-aware",
     "suspend-invalidation",
 ];
-pub const REV: &str = match option_env!("T3_WATCH_BUILD_REV") {
+pub const REV: &str = match option_env!("AGENTPING_BUILD_REV") {
     Some(r) => r,
     None => "dev",
 };
@@ -95,5 +95,5 @@ pub fn json() -> Value {
 }
 
 pub fn line() -> String {
-    format!("t3-watch {VERSION} (engine {ENGINE}, rev {REV})")
+    format!("agentping {VERSION} (engine {ENGINE}, rev {REV})")
 }

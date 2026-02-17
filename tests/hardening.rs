@@ -118,16 +118,16 @@ fn webhook_gets_a_signed_result_and_secrets_stay_out_of_output() {
     let r = &reqs[0];
     assert_eq!(r.path, "/hooks/secret-path-123");
     assert_eq!(r.headers["authorization"], "Bearer hook-token-xyz");
-    assert_eq!(r.headers["x-t3-watch-event"], "settled");
+    assert_eq!(r.headers["x-agentping-event"], "settled");
     assert_eq!(r.headers["content-type"], "application/json");
-    let id = &r.headers["x-t3-watch-id"];
+    let id = &r.headers["x-agentping-id"];
     assert_eq!(v["notification"]["id"], id.as_str());
-    let ts = &r.headers["x-t3-watch-timestamp"];
+    let ts = &r.headers["x-agentping-timestamp"];
     let mut msg = format!("{ts}.{id}.").into_bytes();
     msg.extend_from_slice(&r.body);
     let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, b"s3cret-key");
     let expected = format!("sha256={}", hex(ring::hmac::sign(&key, &msg).as_ref()));
-    assert_eq!(r.headers["x-t3-watch-signature"], expected);
+    assert_eq!(r.headers["x-agentping-signature"], expected);
     let sent: Value = serde_json::from_slice(&r.body).unwrap();
     assert_eq!(
         sent,
@@ -159,7 +159,7 @@ fn webhook_retries_transient_errors_and_honors_retry_after() {
         reqs[1].at - reqs[0].at >= Duration::from_millis(950),
         "Retry-After ignored"
     );
-    let ids: Vec<_> = reqs.iter().map(|r| r.headers["x-t3-watch-id"].clone()).collect();
+    let ids: Vec<_> = reqs.iter().map(|r| r.headers["x-agentping-id"].clone()).collect();
     assert!(ids.iter().all(|i| *i == ids[0]), "retries keep one event id");
 }
 
@@ -307,7 +307,7 @@ echo HOOK-STDOUT-MARKER"#,
     assert!(!pwned.exists(), "arguments must not go through a shell");
     let hook_env = fs::read_to_string(dir.join("payload.json.env")).unwrap();
     assert!(!hook_env.contains("supersecret-value") && !hook_env.contains("T3W_SECRET"));
-    assert!(hook_env.contains("T3_WATCH_EVENT=settled"));
+    assert!(hook_env.contains("AGENTPING_EVENT=settled"));
     // Hook output goes to hooks.log, never to our stdout (the JSON) or our
     // stderr (a pipe a harness may be waiting on).
     assert!(!String::from_utf8_lossy(&out.stdout).contains("HOOK-STDOUT-MARKER"));
@@ -385,7 +385,7 @@ fn notify_on_all_also_reports_timeouts_and_auth_errors() {
     assert_eq!(output_json(&out)["notification"]["delivered"], true);
     let reqs = hook.requests();
     assert_eq!(reqs.len(), 1);
-    assert_eq!(reqs[0].headers["x-t3-watch-event"], "timeout");
+    assert_eq!(reqs[0].headers["x-agentping-event"], "timeout");
 
     env.add_machine("mock", &mock.url, "revoked-token");
     let out = env.run(&[
@@ -400,7 +400,7 @@ fn notify_on_all_also_reports_timeouts_and_auth_errors() {
     assert_eq!(out.status.code(), Some(2));
     let reqs = hook.requests();
     assert_eq!(reqs.len(), 2);
-    assert_eq!(reqs[1].headers["x-t3-watch-event"], "error");
+    assert_eq!(reqs[1].headers["x-agentping-event"], "error");
     let body: Value = serde_json::from_slice(&reqs[1].body).unwrap();
     assert_eq!(body["error"]["kind"], "auth");
 }
@@ -794,7 +794,7 @@ fn watch_and_connection_limits_are_enforced() {
     let env = mcp_env(&mock);
     let out = env
         .cmd(&["wait", "--no-daemon", "a", "b"])
-        .env("T3_WATCH_MAX_WATCHES", "1")
+        .env("AGENTPING_MAX_WATCHES", "1")
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(2));
@@ -802,7 +802,7 @@ fn watch_and_connection_limits_are_enforced() {
 
     let spawn_limited = || {
         env.cmd(&["wait", "a"])
-            .env("T3_WATCH_MAX_CONNECTIONS", "2")
+            .env("AGENTPING_MAX_CONNECTIONS", "2")
             .spawn()
             .unwrap()
     };
@@ -811,7 +811,7 @@ fn watch_and_connection_limits_are_enforced() {
     std::thread::sleep(Duration::from_millis(1500));
     let out = env
         .cmd(&["wait", "a"])
-        .env("T3_WATCH_MAX_CONNECTIONS", "2")
+        .env("AGENTPING_MAX_CONNECTIONS", "2")
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(2), "{}", stdout_and_stderr(&out));
@@ -873,7 +873,7 @@ fn relative_local_paths_are_resolved_by_the_client() {
     let in_b = env
         .cmd(&["wait", "--transport", "local", "--interval", "100ms", "rel"])
         .current_dir(&b.dir)
-        .env("T3_WATCH_T3_BIN", "t3")
+        .env("AGENTPING_T3_BIN", "t3")
         .spawn()
         .unwrap();
     let status = env.wait_status("two watches", secs(10), |s| {

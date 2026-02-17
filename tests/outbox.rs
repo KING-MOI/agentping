@@ -86,11 +86,11 @@ fn durable_wait(env: &Env, url: &str, extra: &[&str]) -> std::process::Command {
 fn signed_ok(r: &HookReq) -> bool {
     let h = &r.headers;
     let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, b"outbox-signing-secret");
-    let mut data = format!("{}.{}.", h["x-t3-watch-timestamp"], h["x-t3-watch-id"]).into_bytes();
+    let mut data = format!("{}.{}.", h["x-agentping-timestamp"], h["x-agentping-id"]).into_bytes();
     data.extend_from_slice(&r.body);
-    h["x-t3-watch-signature"] == format!("sha256={}", hex(ring::hmac::sign(&key, &data).as_ref()))
+    h["x-agentping-signature"] == format!("sha256={}", hex(ring::hmac::sign(&key, &data).as_ref()))
         && h["authorization"] == "Bearer outbox-auth-value"
-        && h["idempotency-key"] == h["x-t3-watch-id"]
+        && h["idempotency-key"] == h["x-agentping-id"]
 }
 
 #[test]
@@ -153,7 +153,7 @@ fn a_receiver_that_comes_back_gets_the_queued_event_with_the_same_id() {
     assert_eq!(r["pending"], 0);
     let reqs = hook.requests();
     assert_eq!(reqs.len(), 1);
-    assert_eq!(reqs[0].headers["x-t3-watch-id"], id);
+    assert_eq!(reqs[0].headers["x-agentping-id"], id);
     assert!(signed_ok(&reqs[0]));
     let body: Value = serde_json::from_slice(&reqs[0].body).unwrap();
     assert_eq!(body["event"], "settled");
@@ -185,7 +185,7 @@ fn a_crash_during_delivery_loses_nothing() {
     assert_eq!(reqs.len(), 1);
     assert!(signed_ok(&reqs[0]));
     let id = outbox_id(&run);
-    assert_eq!(reqs[0].headers["x-t3-watch-id"], id);
+    assert_eq!(reqs[0].headers["x-agentping-id"], id);
     assert!(outbox_files(&env).is_empty());
 }
 
@@ -217,11 +217,11 @@ fn an_answer_lost_after_acceptance_is_resent_with_the_same_id() {
     // body; each signed for its own attempt.
     let first_body = &reqs[0].body;
     for (i, r) in reqs.iter().enumerate() {
-        assert_eq!(r.headers["x-t3-watch-id"], id);
+        assert_eq!(r.headers["x-agentping-id"], id);
         assert_eq!(r.headers["idempotency-key"], id);
         assert_eq!(&r.body, first_body);
         assert!(signed_ok(r));
-        assert_eq!(r.headers["x-t3-watch-attempt"], (i + 1).to_string());
+        assert_eq!(r.headers["x-agentping-attempt"], (i + 1).to_string());
     }
 }
 
@@ -255,7 +255,7 @@ fn the_daemon_keeps_retrying_a_needs_input_wake_until_delivered() {
     let url = format!("http://127.0.0.1:{port}/hooks/secret-path-123");
     let out = env
         .cmd(&["wait", "--durable", "--slice", "300ms", "--webhook-url", &url, T])
-        .env("T3_WATCH_IDLE_EXIT", "1s")
+        .env("AGENTPING_IDLE_EXIT", "1s")
         .output()
         .unwrap();
     // Needs input keeps its own exit code; the notification is queued.
@@ -276,8 +276,8 @@ fn the_daemon_keeps_retrying_a_needs_input_wake_until_delivered() {
         !hook.requests().is_empty()
     });
     let r = &hook.requests()[0];
-    assert_eq!(r.headers["x-t3-watch-id"], id);
-    assert_eq!(r.headers["x-t3-watch-event"], "needs_input");
+    assert_eq!(r.headers["x-agentping-id"], id);
+    assert_eq!(r.headers["x-agentping-event"], "needs_input");
     let body: Value = serde_json::from_slice(&r.body).unwrap();
     assert_eq!(body["threads"][0]["pendingRequestCount"], 1);
     eventually("the outbox to empty", secs(10), || outbox_files(&env).is_empty());

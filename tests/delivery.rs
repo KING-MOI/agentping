@@ -55,11 +55,11 @@ fn outbox(env: &Env) -> Vec<Value> {
 fn events(hook: &MockHook) -> Vec<String> {
     hook.requests()
         .iter()
-        .map(|r| r.headers.get("x-t3-watch-event").cloned().unwrap_or_default())
+        .map(|r| r.headers.get("x-agentping-event").cloned().unwrap_or_default())
         .collect()
 }
 
-/// Starts `t3-watch` with stdout and stderr connected to pipes whose read
+/// Starts `agentping` with stdout and stderr connected to pipes whose read
 /// ends are closed at once: every write to them fails with EPIPE.
 fn spawn_closed(env: &Env, args: &[&str]) -> Child {
     let mut child = env
@@ -81,7 +81,7 @@ fn exit_within(mut child: Child, timeout: Duration) -> i32 {
         }
         if Instant::now() > deadline {
             let _ = child.kill();
-            panic!("t3-watch did not exit");
+            panic!("agentping did not exit");
         }
         std::thread::sleep(Duration::from_millis(20));
     }
@@ -796,7 +796,7 @@ fn the_timeline_never_takes_a_progress_event_for_a_final_outcome_without_one() {
             assert!(hook
                 .requests()
                 .iter()
-                .any(|r| r.headers.get("x-t3-watch-event").map(String::as_str) == Some("timeout")));
+                .any(|r| r.headers.get("x-agentping-event").map(String::as_str) == Some("timeout")));
         }
     }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measures t3-watch against the polling Python watcher on this machine.
+"""Measures agentping against the polling Python watcher on this machine.
 
 Every number comes from a real run:
   - binary size from the file system,
@@ -154,7 +154,7 @@ def scenario_rust(binary, thread, n, window, interval, real_t3, real_base):
         base = os.path.join(home, "base")
         calls = os.path.join(home, "calls")
         make_wrapper(base, calls, real_t3, real_base)
-        env = dict(os.environ, T3_WATCH_HOME=home, T3_WATCH_IDLE_EXIT="1s")
+        env = dict(os.environ, AGENTPING_HOME=home, AGENTPING_IDLE_EXIT="1s")
         # Foreground daemon under /usr/bin/time so its CPU includes its t3 children.
         daemon = subprocess.Popen(["/usr/bin/time", "-l", binary, "daemon"], env=env, stdout=DEVNULL, stderr=subprocess.PIPE, text=True)
         sock = os.path.join(home, "daemon.sock")
@@ -176,7 +176,7 @@ def scenario_rust(binary, thread, n, window, interval, real_t3, real_base):
         # Exit 3 means the client waited out the whole window. Anything else
         # means the thread settled mid-run and the numbers are not comparable.
         if any(code != 3 for code in codes):
-            raise RuntimeError("t3-watch clients exited with %s; the thread must stay active" % sorted(set(codes)))
+            raise RuntimeError("agentping clients exited with %s; the thread must stay active" % sorted(set(codes)))
         _, daemon_err = daemon.communicate(timeout=30)
         client_times = [parse_time_l(err) for _, err in results]
         daemon_time = parse_time_l(daemon_err)
@@ -226,7 +226,7 @@ def scenario_python(thread, n, window, interval, real_t3, real_base):
 def startup(binary, real_t3, real_base, thread_settled):
     home = tempfile.mkdtemp(prefix="t3ws-", dir="/tmp")
     try:
-        env = dict(os.environ, T3_WATCH_HOME=home, T3_WATCH_IDLE_EXIT="10s")
+        env = dict(os.environ, AGENTPING_HOME=home, AGENTPING_IDLE_EXIT="10s")
         stub_dir = os.path.join(home, "stub")
         os.makedirs(stub_dir)
         stub = os.path.join(stub_dir, "t3")
@@ -236,7 +236,7 @@ def startup(binary, real_t3, real_base, thread_settled):
         os.chmod(stub, 0o755)
         out = {
             "trueFloor": time_runs(["/usr/bin/true"], 300),
-            "t3watchVersion": time_runs([binary, "--version"], 300),
+            "agentpingVersion": time_runs([binary, "--version"], 300),
             "pythonBare": time_runs([sys.executable, "-c", "pass"], 100),
             "pythonWatcherHelp": time_runs([sys.executable, PY_WATCHER, "--help"], 100),
         }
@@ -249,8 +249,8 @@ def startup(binary, real_t3, real_base, thread_settled):
             out["realT3ThreadShow"] = time_runs([real_t3, "thread", "show", "--base-dir", real_base, "--messages", "0", "--json", thread_settled], 10)
         out["memory"] = {
             "trueFloor": memory_of(["/usr/bin/true"]),
-            "t3watchVersion": memory_of([binary, "--version"]),
-            "t3watchWaitSettledViaDaemon": memory_of([binary, "wait", "--transport", "local", "--t3-bin", stub, "x"], env=env),
+            "agentpingVersion": memory_of([binary, "--version"]),
+            "agentpingWaitSettledViaDaemon": memory_of([binary, "wait", "--transport", "local", "--t3-bin", stub, "x"], env=env),
             "pythonBare": memory_of([sys.executable, "-c", "pass"]),
             "sleepingRssKb": {
                 "binSleepFloor": sleeping_rss_kb(["/bin/sleep", "30"]),
@@ -267,7 +267,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--thread", required=True, help="a local thread that stays running for the whole benchmark")
     ap.add_argument("--settled-thread", help="a local thread that has already settled (for wake latency)")
-    ap.add_argument("--binary", default=os.path.join(ROOT, "target", "release", "t3-watch"))
+    ap.add_argument("--binary", default=os.path.join(ROOT, "target", "release", "agentping"))
     ap.add_argument("--base-dir", default=os.path.expanduser("~/.t3"))
     ap.add_argument("--window", type=float, default=60.0)
     ap.add_argument("--interval", type=float, default=8.0, help="poll interval for both watchers (Python default: 8s)")

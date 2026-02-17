@@ -4,7 +4,7 @@
 # so no OpenAI request is made and nothing of the user's Codex is touched.
 # Every thread is a disposable one that client A (probe_client.py) creates.
 #
-#   e2e/native/codex/run.sh <fixture dir, short: /tmp/...> <t3-watch binary>
+#   e2e/native/codex/run.sh <fixture dir, short: /tmp/...> <agentping binary>
 #
 # MOCK_PORT picks another port for the mock (default 18801). Prints the
 # probes' JSON lines. Stops what it started and removes the fixture dir at
@@ -49,7 +49,7 @@ echo "== probe_missed.py (gate X3b)"
 mock 2 0
 python3 -I "$HERE/probe_missed.py" "$X" "$BIN"
 stop "$SERVER"; stop "$MOCK"
-for h in "$X/w" "$X/w2" "$X/w2b" "$X/w3" "$X/wh"; do T3_WATCH_HOME=$h "$BIN" stop > /dev/null 2>&1; done
+for h in "$X/w" "$X/w2" "$X/w2b" "$X/w3" "$X/wh"; do AGENTPING_HOME=$h "$BIN" stop > /dev/null 2>&1; done
 target=$(readlink "$X/cs.sock" 2>/dev/null)
 rm -rf "${X:?}"
 [ -n "$target" ] && rm -f "$target" "$target.lock"

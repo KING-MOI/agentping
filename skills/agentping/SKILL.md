@@ -1,11 +1,11 @@
 ---
-name: t3-code-watch
-description: Wait for T3 Code threads to finish without spending tokens. Use after launching or messaging a T3 thread (t3_thread_launch, t3_thread_send, delegate_task) when you would otherwise poll t3_thread_read or keep a subagent open. Starts `t3-watch wait` as a background command, ends the turn, and resumes when the command exits with one JSON line that says completed, failed, needs input, timeout or error.
+name: agentping
+description: Wait for T3 Code threads to finish without spending tokens. Use after launching or messaging a T3 thread (t3_thread_launch, t3_thread_send, delegate_task) when you would otherwise poll t3_thread_read or keep a subagent open. Starts `agentping wait` as a background command, ends the turn, and resumes when the command exits with one JSON line that says completed, failed, needs input, timeout or error.
 ---
 
-# Watching T3 Code threads with t3-watch
+# Watching T3 Code threads with agentping
 
-`t3-watch wait` blocks in the operating system until the threads you name
+`agentping wait` blocks in the operating system until the threads you name
 finish, fail, or stop to ask for input. It then prints one JSON object and
 exits with a code that says which. Your harness wakes you when the
 background command exits (on the machine it watches; see Harness recipes),
@@ -30,7 +30,7 @@ to do in the meantime. Check back later instead.
    command and end your turn right away. Do not poll it.
 
    ```sh
-   t3-watch wait <threadId-or-url> --expect-min-run-ordinal 2 --timeout 2h
+   agentping wait <threadId-or-url> --expect-min-run-ordinal 2 --timeout 2h
    ```
 
 3. When the command exits, act on the exit code and `outcome` (table below).
@@ -98,7 +98,7 @@ redacted).
   with `--acknowledge <pendingKey>` from the result. A new request wakes you
   again.
 
-t3-watch itself never answers or approves anything.
+agentping itself never answers or approves anything.
 
 ## Choosing the target
 
@@ -109,9 +109,9 @@ t3-watch itself never answers or approves anything.
 | A `t3-thread://v2/<envId>/<threadId>` link | the link, plus `--machine <name>` if it is not on the default machine |
 | Several threads | all of them; add `--mode any` to resume on the first one |
 
-Remote machines need a one-time read-only pairing (`t3-watch auth login
+Remote machines need a one-time read-only pairing (`agentping auth login
 <relay-origin>`, or `oauth-start` and `oauth-finish` on a headless box). The
-token only has `orchestration:read`, and t3-watch only calls read tools, so
+token only has `orchestration:read`, and agentping only calls read tools, so
 the watcher can never send messages, answer questions or run anything.
 
 ## Harness recipes
@@ -133,19 +133,19 @@ Grok Bot or any shell-driven bot: run it as a background shell job and hook
 its completion:
 
 ```sh
-t3-watch wait "$THREAD" --until workstream --expect-min-run-ordinal "$ORD" > /tmp/watch.json; notify-bot /tmp/watch.json
+agentping wait "$THREAD" --until workstream --expect-min-run-ordinal "$ORD" > /tmp/watch.json; notify-bot /tmp/watch.json
 ```
 
-Shell scripts: `t3-watch wait a b c && echo "all done"`. Only a completed
+Shell scripts: `agentping wait a b c && echo "all done"`. Only a completed
 wait exits 0, so `&&`, `||` and `set -e` do the right thing.
 
 Bots with no background terminal (a chat bot behind a webhook, a cron job):
-let t3-watch call them, durably. Keep the URL and secret in the environment,
+let agentping call them, durably. Keep the URL and secret in the environment,
 not in argv:
 
 ```sh
 BOT_URL=https://bot.example/hooks/t3 BOT_SECRET=... \
-  t3-watch wait "$THREAD" --until workstream --notify-on all --durable --heartbeat 5m \
+  agentping wait "$THREAD" --until workstream --notify-on all --durable --heartbeat 5m \
     --webhook-url-env BOT_URL --webhook-secret-env BOT_SECRET &
 ```
 
@@ -155,12 +155,12 @@ a long sleep the wait honestly ends in `timeout` and only `all` wakes the
 bot for it.
 
 The bot receives the same JSON in a POST, signed with
-`X-T3-Watch-Signature: sha256=HMAC(secret, "<X-T3-Watch-Timestamp>.<X-T3-Watch-Id>.<body>")`.
-`X-T3-Watch-Event` is `settled`, `needs_input`, `timeout`, `error`, or
+`X-AgentPing-Signature: sha256=HMAC(secret, "<X-AgentPing-Timestamp>.<X-AgentPing-Id>.<body>")`.
+`X-AgentPing-Event` is `settled`, `needs_input`, `timeout`, `error`, or
 progress (`run_failed`, `upstream_unreachable`, `upstream_restored`,
 `heartbeat`). With `--durable`, an undelivered event is kept on disk and the
 daemon retries it until a 2xx (never before a `Retry-After` you sent); drop
-repeats of an `X-T3-Watch-Id` (also sent as `Idempotency-Key`) you have
+repeats of an `X-AgentPing-Id` (also sent as `Idempotency-Key`) you have
 already handled, and order a wait's events by `eventSeq`, since a retried
 event can arrive after a later one. With `--heartbeat`, a
 receiver that stops getting heartbeats for about two intervals (and got no
@@ -172,9 +172,9 @@ in the state directory. Files given to `--webhook-url-file` or
 
 ## Cost model
 
-Every `t3-watch wait` on a machine shares one background daemon. Twenty agents
+Every `agentping wait` on a machine shares one background daemon. Twenty agents
 watching the same thread cost one upstream long-poll (remote) or one `t3
 thread show` per interval (local), not twenty. The daemon exits by itself 60
 seconds after its last waiter leaves, unless queued notifications remain.
-Use `t3-watch status` to see what it is watching and `t3-watch outbox list`
+Use `agentping status` to see what it is watching and `agentping outbox list`
 for queued notifications.

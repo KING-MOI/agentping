@@ -1,14 +1,14 @@
 """A disposable interactive Claude Code session on a pseudo-terminal,
-watched by t3-watch through its async hook (docs/native-sessions.md,
+watched by agentping through its async hook (docs/native-sessions.md,
 Claude Code acceptance checks 3 and 4).
 
 1. A wait is registered first (daemon, webhook to a local receiver).
-2. Claude Code starts in <work dir>/proj with only t3-watch's hooks
+2. Claude Code starts in <work dir>/proj with only agentping's hooks
    (--setting-sources local --settings ... --strict-mcp-config), model
    haiku, tool Bash, permission mode manual, and a prompt asking for one
    Bash command outside the project, so a real permission dialog appears.
    The folder-trust dialog for the new project is answered "yes".
-3. t3-watch must report needs_input (exit 5, webhook). The operator (this
+3. agentping must report needs_input (exit 5, webhook). The operator (this
    script) then rejects the dialog with Escape. It never approves anything;
    the command must not run.
 4. Same-session reuse: a wait pinned to the next run, acknowledging the
@@ -16,7 +16,7 @@ Claude Code acceptance checks 3 and 4).
 5. --resume reuse: a print-mode session, then a pinned wait and a
    `claude -p --resume` of it.
 
-usage: e2e/native/claude_interactive.py <work dir under /tmp> <t3-watch binary> <session uuid>
+usage: e2e/native/claude_interactive.py <work dir under /tmp> <agentping binary> <session uuid>
 
 Prints one JSON line per finding, never screen text. It spends a few small
 haiku requests on the user's Claude Code login. Afterwards, remove the work
@@ -38,7 +38,7 @@ class R(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
-        hooks.append({"at": now(), "event": self.headers.get("X-T3-Watch-Event"),
+        hooks.append({"at": now(), "event": self.headers.get("X-AgentPing-Event"),
                       "threads": [t.get("threadId") for t in body.get("threads", [])],
                       "runOrdinal": [t.get("runOrdinal") for t in body.get("threads", [])]})
         self.send_response(200); self.send_header("Content-Length", "0"); self.end_headers()
@@ -46,8 +46,8 @@ rx = http.server.ThreadingHTTPServer(("127.0.0.1", 0), R)
 threading.Thread(target=rx.serve_forever, daemon=True).start()
 HOOK = "http://127.0.0.1:%d/hook" % rx.server_address[1]
 
-ENV = dict(os.environ, T3_WATCH_HOME=WHOME, T3_WATCH_IDLE_EXIT="5s", TERM="xterm-256color")
-for k in ("T3_WATCH_SOCKET", "T3_WATCH_NO_DAEMON"): ENV.pop(k, None)
+ENV = dict(os.environ, AGENTPING_HOME=WHOME, AGENTPING_IDLE_EXIT="5s", TERM="xterm-256color")
+for k in ("AGENTPING_SOCKET", "AGENTPING_NO_DAEMON"): ENV.pop(k, None)
 settings = subprocess.run([BIN, "hook", "claude-code", "--print-settings"], env=ENV, capture_output=True, text=True).stdout
 open(W + "/hooks.json", "w").write(settings)
 TARGET = "claude-code:" + SID

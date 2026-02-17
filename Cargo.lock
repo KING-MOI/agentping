@@ -232,7 +232,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "t3-watch"
+name = "agentping"
 version = "0.16.1"
 dependencies = [
  "libc",

@@ -1,4 +1,4 @@
-//! End-to-end tests: the real `t3-watch` binary against a mock T3 MCP server,
+//! End-to-end tests: the real `agentping` binary against a mock T3 MCP server,
 //! a mock OAuth server, and a mock local `t3` CLI.
 
 mod common;
@@ -255,7 +255,7 @@ fn killed_client_is_unsubscribed_and_daemon_idles_out() {
     child.kill().unwrap();
     child.wait().unwrap();
     env.wait_status("0 subscribers", SECS(5), |s| s["activeWaits"] == 0);
-    // T3_WATCH_IDLE_EXIT=2s in tests.
+    // AGENTPING_IDLE_EXIT=2s in tests.
     let deadline = Instant::now() + SECS(10);
     while env.status()["running"] == true {
         assert!(Instant::now() < deadline, "daemon {pid} did not exit when idle");
@@ -516,7 +516,7 @@ fn custom_socket_dir_must_be_private_and_is_never_chmodded() {
     let sock = shared.join("w.sock");
     let out = env
         .cmd(&["wait", "--transport", "local", "--t3-bin", t3.bin_str(), "lt-5"])
-        .env("T3_WATCH_SOCKET", &sock)
+        .env("AGENTPING_SOCKET", &sock)
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(2), "{}", String::from_utf8_lossy(&out.stdout));
@@ -527,7 +527,7 @@ fn custom_socket_dir_must_be_private_and_is_never_chmodded() {
     assert_eq!(
         mode(&shared),
         0o755,
-        "t3-watch must not chmod a directory it does not own"
+        "agentping must not chmod a directory it does not own"
     );
     assert!(!sock.exists());
 
@@ -536,11 +536,11 @@ fn custom_socket_dir_must_be_private_and_is_never_chmodded() {
     let sock = private.join("w.sock");
     let out = env
         .cmd(&["wait", "--transport", "local", "--t3-bin", t3.bin_str(), "lt-5"])
-        .env("T3_WATCH_SOCKET", &sock)
+        .env("AGENTPING_SOCKET", &sock)
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(0), "{}", String::from_utf8_lossy(&out.stdout));
     assert_eq!(mode(&private), 0o700);
     assert_eq!(mode(&private.join("w.sock.lock")), 0o600);
-    let _ = env.cmd(&["stop"]).env("T3_WATCH_SOCKET", &sock).output();
+    let _ = env.cmd(&["stop"]).env("AGENTPING_SOCKET", &sock).output();
 }

@@ -49,7 +49,7 @@ fn events(hook: &MockHook) -> Vec<(String, Value)> {
         .iter()
         .map(|r| {
             (
-                r.headers.get("x-t3-watch-event").cloned().unwrap_or_default(),
+                r.headers.get("x-agentping-event").cloned().unwrap_or_default(),
                 serde_json::from_slice(&r.body).unwrap_or(Value::Null),
             )
         })

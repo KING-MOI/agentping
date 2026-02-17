@@ -1,14 +1,14 @@
 """Gate X3b on a real `codex app-server`: approval requests that open and
-close while no t3-watch connection counts are recovered from the hook log
-that `t3-watch hook codex` keeps as Codex's PermissionRequest hook.
+close while no agentping connection counts are recovered from the hook log
+that `agentping hook codex` keeps as Codex's PermissionRequest hook.
 
 The hook is installed in the fixture's own CODEX_HOME only, the way a user
-installs it: the block `t3-watch hook codex --print-settings` prints goes
+installs it: the block `agentping hook codex --print-settings` prints goes
 into config.toml, and the hook is trusted by its key and hash as
 `hooks/list` lists them (what /hooks records when the user trusts it). The
 binary is run from a copy whose path has a space, so the printed command
 is quoted for the shell Codex runs it with.
-Client A owns each disposable thread and declines every request; t3-watch
+Client A owns each disposable thread and declines every request; agentping
 answers none. The mock provider asks for two escalated commands per turn
 (MOCK_CALLS=2).
 
@@ -20,7 +20,7 @@ answers none. The mock provider asks for two escalated commands per turn
           and closes; the next wait through a new daemon recovers request 2
           only.
 
-usage: probe_missed.py <fixture dir> <t3-watch binary>
+usage: probe_missed.py <fixture dir> <agentping binary>
 """
 import json, os, shutil, subprocess, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -28,9 +28,9 @@ import probe_client as pc
 
 X = sys.argv[1]
 os.makedirs(X + "/bin dir", exist_ok=True)
-BIN = shutil.copy2(sys.argv[2], X + "/bin dir/t3-watch")
+BIN = shutil.copy2(sys.argv[2], X + "/bin dir/agentping")
 SOCK, WH = X + "/cs.sock", X + "/wh"
-ENV = dict(os.environ, T3_WATCH_HOME=WH, T3_WATCH_CODEX_SOCKET=SOCK)
+ENV = dict(os.environ, AGENTPING_HOME=WH, AGENTPING_CODEX_SOCKET=SOCK)
 def report(k, v): print(json.dumps({k: v}), flush=True)
 
 # ---- install and trust the hook in the fixture's CODEX_HOME ----------------
@@ -80,7 +80,7 @@ def wait(*args, daemon=False):
     p = subprocess.run(cmd, env=ENV, capture_output=True, text=True, timeout=90)
     v = json.loads(p.stdout or "{}")
     t = (v.get("threads") or [{}])[0]
-    progress = [json.loads(l.split("t3-watch: progress ", 1)[1]) for l in p.stderr.splitlines() if l.startswith("t3-watch: progress ")]
+    progress = [json.loads(l.split("agentping: progress ", 1)[1]) for l in p.stderr.splitlines() if l.startswith("agentping: progress ")]
     return {"exit": p.returncode, "outcome": v.get("outcome"), "via": v.get("via"),
             "pendingKey": t.get("pendingKey"), "ids": t.get("pendingRequestIds"),
             "recovered": [r["id"].rsplit("-", 2)[-2] + "-" + r["id"].rsplit("-", 1)[-1] for r in t.get("recoveredRequests") or []],
@@ -100,7 +100,7 @@ r2 = request(tid, r1)
 out, err = bg.communicate(timeout=60)
 v = json.loads(out or "{}"); t = (v.get("threads") or [{}])[0]
 report("live: request 2, same wait", {"exit": bg.returncode, "ids": t.get("pendingRequestIds"),
-       "recovered": len(t.get("recoveredRequests") or []), "progressLines": err.count("t3-watch: progress ")})
+       "recovered": len(t.get("recoveredRequests") or []), "progressLines": err.count("agentping: progress ")})
 decline(r2)
 A.until(lambda m: m.get("method") == "turn/completed" and m["params"].get("threadId") == tid, 30)
 report("live: turn end", dict(wait("--timeout", "10s", target), hookRecords=records(tid)))

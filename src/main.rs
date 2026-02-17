@@ -1,4 +1,4 @@
-//! t3-watch: wait for T3 Code threads to settle without spending AI tokens.
+//! agentping: wait for T3 Code threads to settle without spending AI tokens.
 
 mod cancel;
 mod codex;
@@ -34,34 +34,34 @@ use std::time::{Duration, Instant};
 const EXIT_NOTIFY_FAILED: i32 = 4;
 
 const USAGE: &str = "\
-t3-watch: wait for T3 Code threads to finish without spending AI tokens.
+agentping: wait for T3 Code threads to finish without spending AI tokens.
 
 USAGE
-  t3-watch wait [OPTIONS] <THREAD>...     block until threads finish, fail or need input
-  t3-watch status                         show the daemon's watches, sessions and outbox
-  t3-watch stop                           stop the daemon
-  t3-watch daemon [--idle-exit 60s]       run the multiplexer in the foreground
-  t3-watch outbox list | run [--once] | drop <ID>
+  agentping wait [OPTIONS] <THREAD>...     block until threads finish, fail or need input
+  agentping status                         show the daemon's watches, sessions and outbox
+  agentping stop                           stop the daemon
+  agentping daemon [--idle-exit 60s]       run the multiplexer in the foreground
+  agentping outbox list | run [--once] | drop <ID>
                                           durable notifications not yet delivered
-  t3-watch outbox legacy-ack --senders-stopped | --revoke
+  agentping outbox legacy-ack --senders-stopped | --revoke
                                           allow (or stop) work on engine-4 entries in
                                           outbox-v2/ once no engine-5/6 sender runs
-  t3-watch auth login <ORIGIN|URL>        pair with a T3 MCP server (browser on this machine)
-  t3-watch auth oauth-start <ORIGIN|URL>  pair from a headless machine, step 1
-  t3-watch auth oauth-finish <CALLBACK>   pair from a headless machine, step 2
-  t3-watch auth discover <ORIGIN|URL>     show OAuth metadata without registering
-  t3-watch auth list | default <NAME> | logout <NAME>
-  t3-watch hook claude-code [--print-settings]
+  agentping auth login <ORIGIN|URL>        pair with a T3 MCP server (browser on this machine)
+  agentping auth oauth-start <ORIGIN|URL>  pair from a headless machine, step 1
+  agentping auth oauth-finish <CALLBACK>   pair from a headless machine, step 2
+  agentping auth discover <ORIGIN|URL>     show OAuth metadata without registering
+  agentping auth list | default <NAME> | logout <NAME>
+  agentping hook claude-code [--print-settings]
                                           record a Claude Code hook event (experimental)
-  t3-watch hook codex [--home DIR] [--print-settings]
+  agentping hook codex [--home DIR] [--print-settings]
                                           record a Codex approval request (experimental)
 
 THREAD is a thread id, a T3 thread URL (https://<relay>/<envId>/<threadId>),
 or a t3-thread://v2/<envId>/<threadId> link. URLs pick the saved machine
 with the same origin. Experimental: claude-code:<session_id> watches a native
-Claude Code session through `t3-watch hook claude-code`, and
+Claude Code session through `agentping hook claude-code`, and
 codex://threads/<id> reads a Codex thread from a Codex app-server socket
-($T3_WATCH_CODEX_SOCKET, default under $CODEX_HOME) (docs/native-sessions.md).
+($AGENTPING_CODEX_SOCKET, default under $CODEX_HOME) (docs/native-sessions.md).
 
 WAIT OPTIONS
   -m, --machine <NAME>             saved machine to use (`local` for the local CLI)
@@ -199,7 +199,7 @@ fn parse_args(raw: &[String], value_opts: &[&'static str], flag_opts: &[&'static
 }
 
 fn usage_error(msg: &str) -> ! {
-    util::warn(&format!("t3-watch: {msg}\nRun `t3-watch --help` for usage."));
+    util::warn(&format!("agentping: {msg}\nRun `agentping --help` for usage."));
     exit(2)
 }
 
@@ -234,7 +234,7 @@ struct WaitDefaults<'a> {
     base_dir: PathBuf,
     /// Absolute `t3` binary, resolved in this process.
     t3_bin: Option<PathBuf>,
-    /// The user named a binary (`--t3-bin` or `$T3_WATCH_T3_BIN`). A `t3`
+    /// The user named a binary (`--t3-bin` or `$AGENTPING_T3_BIN`). A `t3`
     /// that merely happens to be on `PATH` does not make bare ids local.
     explicit_bin: bool,
 }
@@ -394,7 +394,7 @@ fn resolve_target(arg: &str, d: &WaitDefaults, cfg: &Config) -> Result<TargetSpe
     if let Some(name) = d.machine {
         if !cfg.machines.contains_key(name) {
             return Err(format!(
-                "no saved machine named {name:?}; run `t3-watch auth login <origin> --name {name}`"
+                "no saved machine named {name:?}; run `agentping auth login <origin> --name {name}`"
             ));
         }
         return Ok(mcp(name, thread_id, env));
@@ -407,7 +407,7 @@ fn resolve_target(arg: &str, d: &WaitDefaults, cfg: &Config) -> Result<TargetSpe
             return Ok(local(thread_id));
         }
         return Err(format!(
-            "no saved machine for {origin}; run `t3-watch auth login {origin}`"
+            "no saved machine for {origin}; run `agentping auth login {origin}`"
         ));
     }
     if let Some(name) = cfg.default.as_deref().filter(|n| cfg.machines.contains_key(*n)) {
@@ -670,7 +670,7 @@ fn cmd_wait(raw: &[String]) -> ! {
     }
 
     let pretty = a.has("pretty");
-    let no_daemon = a.has("no-daemon") || std::env::var_os("T3_WATCH_NO_DAEMON").is_some();
+    let no_daemon = a.has("no-daemon") || std::env::var_os("AGENTPING_NO_DAEMON").is_some();
     let watch_id = util::hex(&util::random_bytes(8));
     let host = hostname();
 
@@ -700,7 +700,7 @@ fn cmd_wait(raw: &[String]) -> ! {
         Ok(handle) => (Some(progress_tx), Some(handle)),
         Err(e) => {
             util::warn(&format!(
-                "t3-watch: cannot start the progress sender ({e}); progress notifications are sent inline"
+                "agentping: cannot start the progress sender ({e}); progress notifications are sent inline"
             ));
             (None, None)
         }
@@ -746,7 +746,7 @@ fn cmd_wait(raw: &[String]) -> ! {
                 }
             }
         }
-        util::warn(&format!("t3-watch: progress {p}"));
+        util::warn(&format!("agentping: progress {p}"));
     };
 
     // From here on the notification config is valid, so every failure,
@@ -911,7 +911,7 @@ fn cmd_wait(raw: &[String]) -> ! {
             // The daemon sends queued notifications; make sure it runs.
             if let Err(e) = daemon::ensure_running() {
                 util::warn(&format!(
-                    "t3-watch: cannot start the daemon to send the queued notification: {e}"
+                    "agentping: cannot start the daemon to send the queued notification: {e}"
                 ));
             }
         }
@@ -1002,7 +1002,7 @@ fn cmd_outbox(raw: &[String]) -> ! {
                 Err(e) => fail_json("outbox", &e),
             }
         }
-        "run" => outbox::run_forever(&|line| util::warn(&format!("t3-watch: {line}"))),
+        "run" => outbox::run_forever(&|line| util::warn(&format!("agentping: {line}"))),
         "drop" => {
             let [id] = a.positional.as_slice() else {
                 usage_error("outbox drop needs one entry id")
@@ -1030,7 +1030,7 @@ fn cmd_outbox(raw: &[String]) -> ! {
     }
 }
 
-/// `t3-watch hook claude-code` and `t3-watch hook codex`: async command
+/// `agentping hook claude-code` and `agentping hook codex`: async command
 /// hooks. They never print and always exit 0, so they cannot change the
 /// session or decide a request; a failure to record goes to stderr, which
 /// Claude Code and Codex show at most as a notice.
@@ -1048,7 +1048,7 @@ fn cmd_hook(raw: &[String]) -> ! {
                         if print {
                             usage_error(&format!("hook codex: unexpected {other:?}"));
                         }
-                        util::warn(&format!("t3-watch hook: unexpected argument {other:?}"));
+                        util::warn(&format!("agentping hook: unexpected argument {other:?}"));
                         exit(0)
                     }
                 }
@@ -1059,13 +1059,13 @@ fn cmd_hook(raw: &[String]) -> ! {
                     if print {
                         usage_error("hook codex: --home takes an absolute directory");
                     }
-                    util::warn("t3-watch hook: --home takes an absolute directory");
+                    util::warn("agentping hook: --home takes an absolute directory");
                     exit(0)
                 }
                 None => match config::absolute(&config::state_dir()) {
                     Ok(h) => h,
                     Err(e) => {
-                        util::warn(&format!("t3-watch hook: {e}"));
+                        util::warn(&format!("agentping hook: {e}"));
                         exit(if print { 2 } else { 0 })
                     }
                 },
@@ -1073,25 +1073,25 @@ fn cmd_hook(raw: &[String]) -> ! {
             if print {
                 let bin = std::env::current_exe()
                     .map(|p| p.display().to_string())
-                    .unwrap_or_else(|_| "t3-watch".into());
+                    .unwrap_or_else(|_| "agentping".into());
                 print!("{}", codex::codex_hook_settings(&bin, &home));
                 exit(0)
             }
             if let Err(e) = codex::record_codex_hook(std::io::stdin().lock(), &home) {
-                util::warn(&format!("t3-watch hook: {e}"));
+                util::warn(&format!("agentping hook: {e}"));
             }
             exit(0)
         }
         Some("claude-code") if raw.get(1).map(String::as_str) == Some("--print-settings") => {
             let bin = std::env::current_exe()
                 .map(|p| p.display().to_string())
-                .unwrap_or_else(|_| "t3-watch".into());
+                .unwrap_or_else(|_| "agentping".into());
             print_json(&native::claude_settings(&bin), true);
             exit(0)
         }
         Some("claude-code") => {
             if let Err(e) = native::record_claude_hook(std::io::stdin().lock()) {
-                util::warn(&format!("t3-watch hook: {e}"));
+                util::warn(&format!("agentping hook: {e}"));
             }
             exit(0)
         }
@@ -1205,12 +1205,12 @@ fn main() {
         Some(sub @ ("login" | "oauth-start" | "oauth-finish")) => run_auth(sub, rest),
         Some("daemon") => {
             let a = parse_args(rest, &["idle-exit"], &[]).unwrap_or_else(|e| usage_error(&e));
-            let env_idle = std::env::var("T3_WATCH_IDLE_EXIT")
+            let env_idle = std::env::var("AGENTPING_IDLE_EXIT")
                 .ok()
                 .and_then(|s| util::parse_duration(&s).ok());
             let idle = parse_dur(&a, "idle-exit", env_idle.unwrap_or(daemon::DEFAULT_IDLE_EXIT));
             if let Err(e) = daemon::run(idle) {
-                util::warn(&format!("t3-watch daemon: {e}"));
+                util::warn(&format!("agentping daemon: {e}"));
                 exit(1)
             }
         }

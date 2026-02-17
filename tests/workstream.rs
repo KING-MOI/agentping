@@ -69,18 +69,18 @@ fn reads_were_header_only(mock: &MockMcp) -> bool {
 fn events(hook: &MockHook) -> Vec<String> {
     hook.requests()
         .iter()
-        .map(|r| r.headers.get("x-t3-watch-event").cloned().unwrap_or_default())
+        .map(|r| r.headers.get("x-agentping-event").cloned().unwrap_or_default())
         .collect()
 }
 
 fn verify(hook: &HookReq, secret: &[u8]) -> bool {
     let h = &hook.headers;
-    let msg = format!("{}.{}.", h["x-t3-watch-timestamp"], h["x-t3-watch-id"]);
+    let msg = format!("{}.{}.", h["x-agentping-timestamp"], h["x-agentping-id"]);
     let key = ring::hmac::Key::new(ring::hmac::HMAC_SHA256, secret);
     let mut data = msg.into_bytes();
     data.extend_from_slice(&hook.body);
     let tag = ring::hmac::sign(&key, &data);
-    h["x-t3-watch-signature"] == format!("sha256={}", hex(tag.as_ref()))
+    h["x-agentping-signature"] == format!("sha256={}", hex(tag.as_ref()))
 }
 
 // ---- the research incident --------------------------------------------------
@@ -558,7 +558,7 @@ fn an_outage_never_completes_a_wait_and_is_reported_both_ways() {
     let ids: Vec<String> = hook
         .requests()
         .iter()
-        .map(|r| r.headers["x-t3-watch-id"].clone())
+        .map(|r| r.headers["x-agentping-id"].clone())
         .collect();
     assert_eq!(
         ids.iter().collect::<std::collections::HashSet<_>>().len(),
@@ -566,7 +566,7 @@ fn an_outage_never_completes_a_wait_and_is_reported_both_ways() {
         "one id per event"
     );
     for r in hook.requests() {
-        assert_eq!(r.headers["idempotency-key"], r.headers["x-t3-watch-id"]);
+        assert_eq!(r.headers["idempotency-key"], r.headers["x-agentping-id"]);
     }
 }
 
@@ -677,7 +677,7 @@ fn heartbeats_are_signed_and_share_the_watch_id_with_the_result() {
     let reqs = hook.requests();
     let beats: Vec<Value> = reqs
         .iter()
-        .filter(|r| r.headers["x-t3-watch-event"] == "heartbeat")
+        .filter(|r| r.headers["x-agentping-event"] == "heartbeat")
         .map(|r| serde_json::from_slice(&r.body).unwrap())
         .collect();
     assert_eq!(beats[0]["seq"], 0);
@@ -690,5 +690,5 @@ fn heartbeats_are_signed_and_share_the_watch_id_with_the_result() {
         "results own `threads`; heartbeats name ids only"
     );
     assert!(reqs.iter().all(|r| verify(r, b"hb-secret")));
-    assert_eq!(reqs.last().unwrap().headers["x-t3-watch-event"], "settled");
+    assert_eq!(reqs.last().unwrap().headers["x-agentping-event"], "settled");
 }

@@ -1,4 +1,4 @@
-//! Adversarial regressions for the second review of t3-watch:
+//! Adversarial regressions for the second review of agentping:
 //!
 //! - P1: a delegated child's `resultRun` must never prove a newer parent run;
 //!   missing run identity stays unresolved.
@@ -237,10 +237,10 @@ fn cancelled_long_polls_end_on_the_wire_and_in_the_os() {
     let port = port_of(&mock.url);
     let short_wait = || {
         env.cmd(&["wait", "--timeout", "300ms", "--slice", "60s", P])
-            .env("T3_WATCH_MAX_WATCHES", "1")
+            .env("AGENTPING_MAX_WATCHES", "1")
             // Keep the daemon up for the whole test, so only cancellation
             // (never an idle exit) can end the long-polls.
-            .env("T3_WATCH_IDLE_EXIT", "120s")
+            .env("AGENTPING_IDLE_EXIT", "120s")
             .output()
             .unwrap()
     };
@@ -484,7 +484,7 @@ fn notify_on_all_reports_errors_before_the_wait_starts() {
     assert_eq!(output_json(&out)["error"]["kind"], "config");
     let reqs = hook.requests();
     assert_eq!(reqs.len(), 1, "the config error was not delivered");
-    assert_eq!(reqs[0].headers["x-t3-watch-event"], "error");
+    assert_eq!(reqs[0].headers["x-agentping-event"], "error");
 
     fs::remove_file(env.home.join("machines.json")).unwrap();
     let out = env.run(&[

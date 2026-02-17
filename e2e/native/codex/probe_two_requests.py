@@ -6,9 +6,9 @@ status notifications every connection gets show the second request even
 with no pause. Then the same through the daemon, with the second request
 opening between two waits, and once more with drain rounds stretched so
 that a wait starts inside one. Client A, the owner of these disposable
-threads, declines every request; t3-watch answers none.
+threads, declines every request; agentping answers none.
 
-usage: probe_two_requests.py <fixture dir> <t3-watch binary>
+usage: probe_two_requests.py <fixture dir> <agentping binary>
 """
 import json, os, subprocess, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -16,7 +16,7 @@ import probe_client as pc
 
 X, BIN = sys.argv[1], sys.argv[2]
 SOCK = X + "/cs.sock"
-ENV = dict(os.environ, T3_WATCH_HOME=X + "/w2", T3_WATCH_CODEX_SOCKET=SOCK)
+ENV = dict(os.environ, AGENTPING_HOME=X + "/w2", AGENTPING_CODEX_SOCKET=SOCK)
 def report(k, v): print(json.dumps({k: v}), flush=True)
 def watch(*args):
     p = subprocess.run([BIN, "wait", "--no-daemon", *args], env=ENV, capture_output=True, text=True, timeout=60)
@@ -39,7 +39,7 @@ report("request 1, a second --no-daemon wait counts it again", {"exit": code, "p
        "newKey": k is not None and k != k1})
 # One wait, connected from request 1 on, waits past it while the owner
 # answers it; its own state starts the count afresh, at request 1.
-ENV1 = dict(ENV, T3_WATCH_HOME=X + "/w2b")
+ENV1 = dict(ENV, AGENTPING_HOME=X + "/w2b")
 bg = subprocess.Popen([BIN, "wait", "--no-daemon", "--timeout", "40s", "--acknowledge", k1, target],
                       env=ENV1, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 time.sleep(1.5)
@@ -83,11 +83,11 @@ A.w.send({"jsonrpc": "2.0", "id": q2["id"], "result": {"decision": "decline"}})
 A.until(lambda m: m.get("method") == "turn/completed" and m["params"].get("threadId") == tid2, 30)
 
 # The keeper's drain path: a separate daemon whose drain rounds read each
-# kept connection for 3 s, back to back (T3_WATCH_TEST_CODEX_DRAIN_MS), so
+# kept connection for 3 s, back to back (AGENTPING_TEST_CODEX_DRAIN_MS), so
 # the second wait starts inside a round. It must take the kept connection
 # (and its counter), and request 2, opened while no wait runs, must reach
 # the third wait under its own key.
-ENV3 = dict(ENV, T3_WATCH_HOME=X + "/w3", T3_WATCH_TEST_CODEX_DRAIN_MS="3000")
+ENV3 = dict(ENV, AGENTPING_HOME=X + "/w3", AGENTPING_TEST_CODEX_DRAIN_MS="3000")
 def watch3(*args):
     p = subprocess.run([BIN, "wait", *args], env=ENV3, capture_output=True, text=True, timeout=60)
     v = json.loads(p.stdout or "{}")

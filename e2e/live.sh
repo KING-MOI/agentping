@@ -5,7 +5,7 @@
 # fixture that enforces the signature and Authorization header; passing here
 # is not evidence that a production receiver got or acted on an event.
 #
-# Usage: e2e/live.sh <settled-thread-id> <running-thread-id> [t3-watch binary] [relay origin]
+# Usage: e2e/live.sh <settled-thread-id> <running-thread-id> [agentping binary] [relay origin]
 #   settled-thread-id  a top-level thread that has completed
 #   running-thread-id  a thread that stays running for about two minutes
 #   WAITING_THREAD=<id> optionally, a thread blocked on a question or approval
@@ -16,15 +16,15 @@ set -uo pipefail
 
 SETTLED=${1:?settled thread id}
 RUNNING=${2:?running thread id}
-BIN=${3:-target/release/t3-watch}
+BIN=${3:-target/release/agentping}
 RELAY=${4:-}
 HERE=$(cd "$(dirname "$0")" && pwd)
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
 # Short: the daemon socket lives here and Unix socket paths are limited.
 WORK=$(mktemp -d /tmp/t3w-e2e.XXXX)
-export T3_WATCH_HOME=$WORK/home
-export T3_WATCH_IDLE_EXIT=120s
-mkdir -m 700 "$T3_WATCH_HOME"
+export AGENTPING_HOME=$WORK/home
+export AGENTPING_IDLE_EXIT=120s
+mkdir -m 700 "$AGENTPING_HOME"
 FAILED=0
 
 j() { python3 -c "import json,sys; v=json.loads(sys.stdin.read() or 'null'); print(eval(sys.argv[1]))" "$1"; }
@@ -42,7 +42,7 @@ start_receiver() { # start_receiver <log> <portfile> [port]
   for i in $(seq 50); do [ -s "$2" ] && break; sleep 0.1; done
 }
 
-echo "== t3-watch $("$BIN" --version | cut -d' ' -f2) at $BIN"
+echo "== agentping $("$BIN" --version | cut -d' ' -f2) at $BIN"
 echo "== work dir $WORK"
 
 # 1. A finished thread completes through the daemon (turn mode).
@@ -111,12 +111,12 @@ check "daemon descriptors back to baseline" [ "$F1" -le "$F0" ]
 # 6. Webhooks to a controlled receiver on 127.0.0.1, signed and authorized.
 printf 'e2e-secret-%s' "$RANDOM$RANDOM" > "$WORK/secret"; chmod 600 "$WORK/secret"
 start_receiver "$WORK/hooks.jsonl" "$WORK/port"
-export HOOK_URL="http://127.0.0.1:$(cat "$WORK/port")/t3-watch/e2e" HOOK_AUTH="Bearer e2e-auth"
+export HOOK_URL="http://127.0.0.1:$(cat "$WORK/port")/agentping/e2e" HOOK_AUTH="Bearer e2e-auth"
 hook() { "$BIN" wait "$@" --webhook-url-env HOOK_URL --webhook-secret-file "$WORK/secret" --webhook-header-env Authorization=HOOK_AUTH; }
 out=$(hook "$SETTLED"); code=$?
 check "completed wait with a webhook exits 0" [ "$code" = 0 ]
 check "notification reported delivered" [ "$(echo "$out" | j 'v["notification"]["delivered"]')" = True ]
-check "output does not echo the webhook URL or secret" not_contains "$out" "t3-watch/e2e" "e2e-secret" "e2e-auth"
+check "output does not echo the webhook URL or secret" not_contains "$out" "agentping/e2e" "e2e-secret" "e2e-auth"
 out=$(hook --timeout 2s --notify-on all "$RUNNING"); code=$?
 check "timeout with --notify-on all exits 3" [ "$code" = 3 ]
 # Heartbeats while waiting on the running thread.
@@ -130,7 +130,7 @@ sys.exit(0 if e[:2] == ['settled', 'timeout'] and e[2:].count('heartbeat') >= 2 
 check "every signature, Authorization and Idempotency-Key verified" python3 -c "
 import json,sys; e=[json.loads(l) for l in open('$WORK/hooks.jsonl')]
 sys.exit(0 if e and all(x['signatureOk'] and x['authorizationOk'] and x['idempotencyOk'] for x in e) else 1)"
-# The fixture refuses a wrong Authorization header, and t3-watch says so.
+# The fixture refuses a wrong Authorization header, and agentping says so.
 out=$(HOOK_AUTH="Bearer wrong" hook "$SETTLED"); code=$?
 check "a rejected webhook (401) exits 4 with delivered false" [ "$code/$(echo "$out" | j 'v["notification"]["webhook"].get("status")')" = 4/401 ]
 kill "$RECV" 2>/dev/null
@@ -140,7 +140,7 @@ kill "$RECV" 2>/dev/null
 # Stop the daemon first so `outbox run --once` is the only sender.
 "$BIN" stop > /dev/null
 DPORT=$(python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1])")
-out=$(HOOK_URL="http://127.0.0.1:$DPORT/t3-watch/durable" hook --durable --no-daemon "$SETTLED"); code=$?
+out=$(HOOK_URL="http://127.0.0.1:$DPORT/agentping/durable" hook --durable --no-daemon "$SETTLED"); code=$?
 check "durable wait with the receiver down exits 4 (queued)" [ "$code" = 4 ]
 check "notification is queued" [ "$(echo "$out" | j 'v["notification"].get("queued")')" = True ]
 QID=$(echo "$out" | j 'v["notification"]["id"]')
@@ -159,7 +159,7 @@ err=$("$BIN" wait "$SETTLED" --on-settle /bin/sh --on-settle-arg -c \
   --on-settle-arg "cat > '$WORK/hook.json'; echo e2e-hook-output" 2>&1 >/dev/null); code=$?
 check "on-settle hook ran and the wait exits 0" [ "$code" = 0 ]
 check "hook received the completed result" [ "$(j 'v["outcome"]' < "$WORK/hook.json")" = completed ]
-check "hook output went to hooks.log, not stderr" sh -c "grep -q e2e-hook-output '$T3_WATCH_HOME/hooks.log' && ! echo '$err' | grep -q e2e-hook-output"
+check "hook output went to hooks.log, not stderr" sh -c "grep -q e2e-hook-output '$AGENTPING_HOME/hooks.log' && ! echo '$err' | grep -q e2e-hook-output"
 
 # 8. Optional: a thread blocked on a question or approval (read-only).
 if [ -n "${WAITING_THREAD:-}" ]; then

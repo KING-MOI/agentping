@@ -1,9 +1,9 @@
-"""t3-watch against a real `codex app-server` (isolated CODEX_HOME, mock
+"""agentping against a real `codex app-server` (isolated CODEX_HOME, mock
 model provider: no OpenAI request, no spend). Client A owns a disposable
-thread and gets its approval request; t3-watch watches it read-only. Prints
+thread and gets its approval request; agentping watches it read-only. Prints
 one JSON line per finding. Run it through run.sh, which sets up the fixture.
 
-usage: probe.py <fixture dir> <t3-watch binary>
+usage: probe.py <fixture dir> <agentping binary>
 """
 import hashlib, http.server, json, os, signal, subprocess, sys, threading, time
 
@@ -21,7 +21,7 @@ class R(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
-        hooks.append({"at": now(), "event": self.headers.get("X-T3-Watch-Event"),
+        hooks.append({"at": now(), "event": self.headers.get("X-AgentPing-Event"),
                       "thread": [t.get("threadId") for t in body.get("threads", [])],
                       "outcome": body.get("outcome"), "keys": sorted(body)[:12]})
         self.send_response(200); self.send_header("Content-Length", "0"); self.end_headers()
@@ -43,8 +43,8 @@ def files():
     return out
 def changed(a, b): return sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k))
 
-ENV = dict(os.environ, T3_WATCH_HOME=WHOME, T3_WATCH_CODEX_SOCKET=SOCK, T3_WATCH_IDLE_EXIT="5s")
-for k in ("T3_WATCH_SOCKET", "T3_WATCH_NO_DAEMON"): ENV.pop(k, None)
+ENV = dict(os.environ, AGENTPING_HOME=WHOME, AGENTPING_CODEX_SOCKET=SOCK, AGENTPING_IDLE_EXIT="5s")
+for k in ("AGENTPING_SOCKET", "AGENTPING_NO_DAEMON"): ENV.pop(k, None)
 def watch(*args):
     return subprocess.Popen([BIN, "wait", *args], env=ENV, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 def done(p, secs):
@@ -83,7 +83,7 @@ hook = next((h for h in hooks if h["event"] == "needs_input"), None)
 report("2 webhook", hook and {**hook, "afterRequestMs": int((hook["at"] - t_req) * 1000)})
 key = brief(v)["pendingKey"]
 
-# 3. Non-mutation: the same 8 s with and without t3-watch polling, while
+# 3. Non-mutation: the same 8 s with and without agentping polling, while
 #    A's request stays open and nothing else runs.
 time.sleep(1.0)
 f0 = files(); time.sleep(8.0); f1 = files()
@@ -117,8 +117,8 @@ report("5 pinned wait", {"exit": code, **brief(v), "turn": c2 and c2["params"]["
 hook = next((h for h in hooks[n:] if h["event"] == "settled"), None)
 report("5 webhook", hook and {**hook, "afterTurnCompletedMs": int((hook["at"] - c2["_at"]) * 1000)})
 
-# 6. Unload: A leaves. t3-watch keeps polling; the thread must still unload
-#    (no subscription of t3-watch keeps it loaded).
+# 6. Unload: A leaves. agentping keeps polling; the thread must still unload
+#    (no subscription of agentping keeps it loaded).
 A.call("thread/unsubscribe", {"threadId": tid}); A.close()
 t_left = now()
 w = watch("--no-daemon", "--timeout", "150s", "--expect-min-run-ordinal", "3", target)
@@ -130,7 +130,7 @@ while now() - t_left < 120:
         unloaded = int(now() - t_left); break
     time.sleep(5)
 st = (D.call("thread/read", {"threadId": tid}).get("result") or {}).get("thread", {}).get("status")
-report("6 unloaded while t3-watch polled", {"afterSeconds": unloaded, "status": st})
+report("6 unloaded while agentping polled", {"afterSeconds": unloaded, "status": st})
 w.send_signal(signal.SIGTERM)
 code, v, err = done(w, 20)
 report("6 watcher stopped", {"exit": code})

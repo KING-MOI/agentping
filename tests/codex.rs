@@ -2,8 +2,8 @@
 //! the thread from a Codex app-server over its WebSocket-on-Unix-socket
 //! transport. The app-server here is a mock that speaks the documented
 //! protocol; it records every method a client sends, so the tests can show
-//! that t3-watch only reads and never answers a server request. Approval
-//! requests are also recorded by `t3-watch hook codex`, run here as Codex
+//! that agentping only reads and never answers a server request. Approval
+//! requests are also recorded by `agentping hook codex`, run here as Codex
 //! runs a `PermissionRequest` hook.
 
 mod common;
@@ -125,7 +125,7 @@ impl MockCodex {
         self.st.lock().unwrap().calls.iter().map(|(m, _)| m.clone()).collect()
     }
 
-    /// `hooks/list` lists `t3-watch hook codex` for this state directory,
+    /// `hooks/list` lists `agentping hook codex` for this state directory,
     /// as Codex does once the user installed and trusted it.
     fn install_hook(&self, env: &Env, trust: &str) {
         let command = format!("'{BIN}' hook codex --home {}", env.home.display());
@@ -138,7 +138,7 @@ impl MockCodex {
     }
 }
 
-/// Runs `t3-watch hook codex` with `input` on stdin, as Codex runs a hook.
+/// Runs `agentping hook codex` with `input` on stdin, as Codex runs a hook.
 fn run_hook(env: &Env, input: &[u8]) -> std::process::Output {
     let mut c = env.cmd(&["hook", "codex", "--home", env.home.to_str().unwrap()]);
     c.stdin(Stdio::piped());
@@ -171,7 +171,7 @@ fn hook_log(env: &Env) -> PathBuf {
         .join(format!("{T}.requests.jsonl"))
 }
 
-/// A hook log line as `t3-watch hook codex` writes it.
+/// A hook log line as `agentping hook codex` writes it.
 fn record_line(turn: &str, at: u64) -> String {
     json!({ "atMs": at, "event": "PermissionRequest", "tool": "Bash", "turn": turn }).to_string() + "\n"
 }
@@ -192,7 +192,7 @@ fn wait(env: &Env, cx: &MockCodex, args: &[&str]) -> std::process::Command {
     let mut all = vec!["wait"];
     all.extend_from_slice(args);
     let mut c = env.cmd(&all);
-    c.env("T3_WATCH_CODEX_SOCKET", &cx.sock);
+    c.env("AGENTPING_CODEX_SOCKET", &cx.sock);
     c
 }
 
@@ -434,11 +434,11 @@ fn serve(mut s: UnixStream, st: Arc<Mutex<Codex>>) {
 fn assert_read_only(cx: &MockCodex) {
     let g = cx.st.lock().unwrap();
     for (m, _) in &g.calls {
-        assert!(READS.contains(&m.as_str()), "t3-watch sent {m}");
+        assert!(READS.contains(&m.as_str()), "agentping sent {m}");
     }
     assert!(
         g.answers.is_empty(),
-        "t3-watch answered a server request: {:?}",
+        "agentping answered a server request: {:?}",
         g.answers
     );
     assert_eq!(g.unmasked, 0, "client frames must be masked");
@@ -490,7 +490,7 @@ fn a_turn_is_watched_read_only_and_server_requests_are_never_answered() {
         assert!(!out.to_string().contains("PREVIEW_CANARY"), "{out}");
         let reqs = hook_rx.requests();
         assert_eq!(reqs.len(), 1, "daemon={daemon}");
-        assert_eq!(reqs[0].headers["x-t3-watch-event"], "settled");
+        assert_eq!(reqs[0].headers["x-agentping-event"], "settled");
         assert!(String::from_utf8_lossy(&reqs[0].body).contains(&t));
         assert!(!String::from_utf8_lossy(&reqs[0].body).contains("PREVIEW_CANARY"));
         assert_read_only(&cx);
@@ -707,7 +707,7 @@ fn without_an_app_server_the_wait_keeps_trying_until_its_timeout() {
     let t = target();
     let out = env
         .cmd(&["wait", "--no-daemon", "--timeout", "2s", &t])
-        .env("T3_WATCH_CODEX_SOCKET", &missing)
+        .env("AGENTPING_CODEX_SOCKET", &missing)
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(3), "{}", String::from_utf8_lossy(&out.stdout));
@@ -909,7 +909,7 @@ fn without_the_hook_a_request_that_opens_and_closes_while_nothing_counts_is_not_
     // The app-server keeps no record of past requests, so without the hook
     // (an app-server without `hooks/list`, or the hook listed but not
     // trusted, so Codex never runs it) a request answered before any
-    // t3-watch connection counts again leaves no trace. The result says so.
+    // agentping connection counts again leaves no trace. The result says so.
     for trust in [None, Some("untrusted")] {
         let env = Env::new();
         let cx = MockCodex::start(&env);
@@ -987,7 +987,7 @@ fn a_request_that_opens_and_closes_while_nothing_counts_is_recovered_from_the_ho
         assert!(rec[0]["openedAt"].as_str().unwrap() <= rec[0]["recoveredAt"].as_str().unwrap());
         let sent = rx.requests();
         assert_eq!(sent.len(), 1, "daemon={daemon}");
-        assert_eq!(sent[0].headers["x-t3-watch-event"], "requests_recovered");
+        assert_eq!(sent[0].headers["x-agentping-event"], "requests_recovered");
         let body: Value = serde_json::from_slice(&sent[0].body).unwrap();
         assert_eq!(body["progress"], true);
         assert_eq!(body["recovered"][0]["id"], "codex-turn-1-approval-1");
@@ -1218,7 +1218,7 @@ fn a_replaced_truncated_or_deleted_hook_log_loses_and_repeats_nothing() {
         let err = String::from_utf8_lossy(&out.stderr).to_string();
         let announced: usize = err
             .lines()
-            .filter_map(|l| l.strip_prefix("t3-watch: progress "))
+            .filter_map(|l| l.strip_prefix("agentping: progress "))
             .map(|p| {
                 serde_json::from_str::<Value>(p).unwrap()["recovered"]
                     .as_array()
@@ -1311,7 +1311,7 @@ fn a_count_stored_by_0_16_0_is_taken_over_without_reporting_its_records_again() 
     let err = String::from_utf8_lossy(&out.stderr);
     let announced: Vec<Value> = err
         .lines()
-        .filter_map(|l| l.strip_prefix("t3-watch: progress "))
+        .filter_map(|l| l.strip_prefix("agentping: progress "))
         .map(|p| serde_json::from_str::<Value>(p).unwrap()["recovered"].clone())
         .collect();
     assert_eq!(announced.len(), 1, "{err}");
@@ -1454,8 +1454,8 @@ fn waits_with_drain<'a>(
         let mut all = vec!["wait"];
         all.extend_from_slice(args);
         let mut c = env.cmd(&all);
-        c.env("T3_WATCH_CODEX_SOCKET", &cx.sock)
-            .env("T3_WATCH_TEST_CODEX_DRAIN_MS", drain_ms);
+        c.env("AGENTPING_CODEX_SOCKET", &cx.sock)
+            .env("AGENTPING_TEST_CODEX_DRAIN_MS", drain_ms);
         c.output().unwrap()
     }
 }

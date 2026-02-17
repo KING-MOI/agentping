@@ -55,7 +55,7 @@ const CONTROL_HEADROOM: usize = 64;
 
 fn log(msg: &str) {
     util::warn(&format!(
-        "[{}] t3-watch daemon {}: {msg}",
+        "[{}] agentping daemon {}: {msg}",
         util::now_ms(),
         std::process::id()
     ));
@@ -64,7 +64,7 @@ fn log(msg: &str) {
 fn check_socket_path(sock: &Path) -> Result<(), String> {
     if sock.as_os_str().len() > MAX_SOCKET_PATH {
         return Err(format!(
-            "socket path is too long for a Unix socket ({} bytes): {}; set T3_WATCH_SOCKET to a shorter path",
+            "socket path is too long for a Unix socket ({} bytes): {}; set AGENTPING_SOCKET to a shorter path",
             sock.as_os_str().len(),
             sock.display()
         ));
@@ -76,8 +76,8 @@ fn socket_dir(sock: &Path) -> PathBuf {
     sock.parent().map(Path::to_path_buf).unwrap_or_else(config::state_dir)
 }
 
-/// Creates the socket's directory. Directories t3-watch owns become 0700. A
-/// directory chosen with `T3_WATCH_SOCKET` is created 0700 if missing and
+/// Creates the socket's directory. Directories agentping owns become 0700. A
+/// directory chosen with `AGENTPING_SOCKET` is created 0700 if missing and
 /// otherwise must already be a private directory of ours; its permissions
 /// are never changed.
 fn prepare_socket_dir(sock: &Path) -> Result<(), String> {
@@ -137,7 +137,7 @@ fn take_lock(path: &Path, sock: &Path) -> io::Result<Option<File>> {
 }
 
 fn max_connections() -> usize {
-    std::env::var("T3_WATCH_MAX_CONNECTIONS")
+    std::env::var("AGENTPING_MAX_CONNECTIONS")
         .ok()
         .and_then(|v| v.parse().ok())
         .filter(|n: &usize| *n > 0)
@@ -299,7 +299,7 @@ fn read_line_chunk(r: &mut impl BufRead, max: usize, out: &mut Vec<u8>) -> Resul
     Ok(done.then(|| std::mem::take(out)))
 }
 
-/// Counts waiting clients against `T3_WATCH_MAX_CONNECTIONS`. Control
+/// Counts waiting clients against `AGENTPING_MAX_CONNECTIONS`. Control
 /// requests (`status`, `stop`, `ping`) do not take a slot.
 struct WaitSlots {
     used: Arc<AtomicUsize>,
@@ -370,7 +370,7 @@ fn handle(hub: &Arc<Hub>, stream: UnixStream, sock: &Path, slots: &WaitSlots) ->
                         "incompatible_client",
                         &format!(
                             "this daemon runs engine {} ({}); the client sent engine {}, so its \
-                             request may mean something else here. Use a t3-watch of the same engine \
+                             request may mean something else here. Use an agentping of the same engine \
                              revision on this socket",
                             version::ENGINE,
                             version::line(),
@@ -487,7 +487,7 @@ fn connect(sock: &Path) -> Result<Option<UnixStream>, String> {
         Err(e) if e.kind() == io::ErrorKind::TimedOut => {
             return Err(format!(
                 "the daemon at {} does not accept connections (hung, or its backlog is full); \
-                 stop its process, or run `t3-watch wait --no-daemon`",
+                 stop its process, or run `agentping wait --no-daemon`",
                 sock.display()
             ))
         }
@@ -583,7 +583,7 @@ fn incompatible(accepted: Option<&Value>, first: &Value, sock: &Path) -> Option<
         || "an unidentified daemon".to_string(),
         |a| {
             format!(
-                "t3-watch {} (engine {}, rev {}, pid {})",
+                "agentping {} (engine {}, rev {}, pid {})",
                 a.get("version").and_then(Value::as_str).unwrap_or("?"),
                 a.get("engine").map_or_else(|| "none".to_string(), |e| e.to_string()),
                 a.get("rev").and_then(Value::as_str).unwrap_or("?"),
@@ -598,8 +598,8 @@ fn incompatible(accepted: Option<&Value>, first: &Value, sock: &Path) -> Option<
     };
     Some(format!(
         "the daemon at {} is {who}{lacking}, but this client is {}: its results may mean \
-         something else, so none is trusted. Stop that daemon with its own t3-watch \
-         (`t3-watch stop`) or let it idle out, or point T3_WATCH_SOCKET elsewhere",
+         something else, so none is trusted. Stop that daemon with its own agentping \
+         (`agentping stop`) or let it idle out, or point AGENTPING_SOCKET elsewhere",
         sock.display(),
         version::line()
     ))

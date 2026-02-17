@@ -29,8 +29,8 @@ def main():
     w("| | Result |")
     w("| --- | --- |")
     w("| Release binary (`opt-level = \"z\"`, LTO, stripped) | %s bytes (%s) |" % (format(r["binaryBytes"], ","), mb_b(r["binaryBytes"])))
-    w("| `t3-watch --version`, median of %d runs | %.2f ms (floor: `/usr/bin/true` %.2f ms) |" % (
-        s["t3watchVersion"]["runs"], s["t3watchVersion"]["medianMs"], s["trueFloor"]["medianMs"]))
+    w("| `agentping --version`, median of %d runs | %.2f ms (floor: `/usr/bin/true` %.2f ms) |" % (
+        s["agentpingVersion"]["runs"], s["agentpingVersion"]["medianMs"], s["trueFloor"]["medianMs"]))
     w("| `python3 -c pass`, median of %d runs | %.2f ms |" % (s["pythonBare"]["runs"], s["pythonBare"]["medianMs"]))
     w("| Python watcher `--help`, median of %d runs | %.2f ms |" % (s["pythonWatcherHelp"]["runs"], s["pythonWatcherHelp"]["medianMs"]))
     w("| `wait` on a settled thread via the warm daemon, stub `t3` (`sh`), median of %d | %.2f ms |" % (
@@ -46,8 +46,8 @@ def main():
     w("")
     w("| Process | Max RSS (median of 20) | Peak footprint (median of 20) |")
     w("| --- | --- | --- |")
-    for label, key in [("`/usr/bin/true` (floor)", "trueFloor"), ("`t3-watch --version`", "t3watchVersion"),
-                       ("`t3-watch wait` client, settled thread", "t3watchWaitSettledViaDaemon"), ("`python3 -c pass`", "pythonBare")]:
+    for label, key in [("`/usr/bin/true` (floor)", "trueFloor"), ("`agentping --version`", "agentpingVersion"),
+                       ("`agentping wait` client, settled thread", "agentpingWaitSettledViaDaemon"), ("`python3 -c pass`", "pythonBare")]:
         w("| %s | %s | %s |" % (label, mb_b(m[key]["maxRssBytesMedian"]), mb_b(m[key]["peakFootprintBytesMedian"])))
     w("")
     w("A process blocked in `sleep` has %s RSS for `/bin/sleep` and %s for `python3 -c 'time.sleep(30)'`." % (
@@ -61,14 +61,14 @@ def main():
     w("| --- | --- | --- | --- | --- | --- |")
     for n in sorted(rust, key=int):
         ru, pv = rust[n], py[n]
-        w("| %s | t3-watch (clients + daemon) | %d | %.2f s | %s | client %s, daemon %s |" % (
+        w("| %s | agentping (clients + daemon) | %d | %.2f s | %s | client %s, daemon %s |" % (
             n, ru["t3Calls"], ru["cpuSeconds"], mb_kb(ru["totalRssKb"]), mb_kb(ru["clientRssKb"]["median"]), mb_kb(ru["daemonRssKb"])))
         w("| %s | Python watcher | %d | %.2f s | %s | %s |" % (
             n, pv["t3Calls"], pv["cpuSeconds"], mb_kb(pv["totalRssKb"]), mb_kb(pv["watcherRssKb"]["median"])))
     w("")
     biggest = max(rust, key=int)
     ru = rust[biggest]
-    w("Each of the %s t3-watch clients reported %.2f s of CPU for the whole window, which is below the 10 ms resolution of `/usr/bin/time`. All of t3-watch's CPU time is the daemon and the `t3` processes it ran. The watched thread was still `%s` at the end, and every watcher timed out rather than settling, so both tools did the same job." % (
+    w("Each of the %s agentping clients reported %.2f s of CPU for the whole window, which is below the 10 ms resolution of `/usr/bin/time`. All of agentping's CPU time is the daemon and the `t3` processes it ran. The watched thread was still `%s` at the end, and every watcher timed out rather than settling, so both tools did the same job." % (
         biggest, ru["cpuSecondsClientsOnly"], r["threadStatusAfter"]))
     print("\n".join(out))
 

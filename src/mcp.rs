@@ -58,7 +58,7 @@ pub enum CallError {
     /// HTTP 401. `call_tool` tries to recover a token once, then reports
     /// `Auth` or `Transient`; it never reaches the engine.
     Unauthorized(String),
-    /// The server cannot give the proof the caller asked for (or t3-watch
+    /// The server cannot give the proof the caller asked for (or agentping
     /// refuses a read with side effects). Reported, never retried.
     Unsupported(String),
     /// The operation was cancelled because nobody waits for it any more.
@@ -126,7 +126,7 @@ pub struct Stats {
 /// still running. T3 answers at once either way.
 pub const PROBE_TIMEOUT_MS: u64 = 1;
 
-/// The tools t3-watch may call, and for `t3_pending_request` the actions:
+/// The tools agentping may call, and for `t3_pending_request` the actions:
 /// reading only. Answering a question or anything else that changes a
 /// thread is refused here, whatever the token would allow.
 pub fn tool_allowed(name: &str, args: &Value) -> bool {
@@ -215,7 +215,7 @@ impl McpClient {
             .https_only(self.https)
             .timeout_resolve(Some(Duration::from_secs(10)))
             .timeout_connect(Some(Duration::from_secs(15)))
-            .user_agent(concat!("t3-watch/", env!("CARGO_PKG_VERSION")))
+            .user_agent(concat!("agentping/", env!("CARGO_PKG_VERSION")))
             .build()
             .into()
     }
@@ -409,7 +409,7 @@ impl McpClient {
 
     fn auth_message(&self, status: u16) -> String {
         format!(
-            "{} rejected the token (HTTP {status}); run `t3-watch auth login {} --name {}` again",
+            "{} rejected the token (HTTP {status}); run `agentping auth login {} --name {}` again",
             self.endpoint, self.origin, self.label
         )
     }
@@ -457,7 +457,7 @@ impl McpClient {
             "params": {
                 "protocolVersion": PROTOCOL_VERSION,
                 "capabilities": {},
-                "clientInfo": { "name": "t3-watch", "version": env!("CARGO_PKG_VERSION") }
+                "clientInfo": { "name": "agentping", "version": env!("CARGO_PKG_VERSION") }
             }
         });
         let reply = self.post(agent, &init, None, None, Duration::from_secs(30))?;
@@ -527,7 +527,7 @@ impl McpClient {
         let note = json!({
             "jsonrpc": "2.0",
             "method": "notifications/cancelled",
-            "params": { "requestId": id, "reason": "no t3-watch client waits for this any more" }
+            "params": { "requestId": id, "reason": "no agentping client waits for this any more" }
         });
         let _ = self.post(&agent, &note, session, None, Duration::from_secs(3));
     }
@@ -547,7 +547,7 @@ impl McpClient {
     ) -> Result<Value, CallError> {
         if !tool_allowed(name, &args) {
             return Err(CallError::Fatal(format!(
-                "refusing to call {}: t3-watch only reads threads",
+                "refusing to call {}: agentping only reads threads",
                 util::sanitize_text(name, 64)
             )));
         }
@@ -630,7 +630,7 @@ pub fn check_protocol_version(msg: &Value) -> Result<String, CallError> {
     match msg.pointer("/result/protocolVersion").and_then(Value::as_str) {
         Some(v) if SUPPORTED_VERSIONS.contains(&v) => Ok(v.to_string()),
         Some(v) => Err(CallError::Fatal(format!(
-            "server speaks MCP protocol {:?}; t3-watch supports {}",
+            "server speaks MCP protocol {:?}; agentping supports {}",
             util::sanitize_text(v, 40),
             SUPPORTED_VERSIONS.join(", ")
         ))),

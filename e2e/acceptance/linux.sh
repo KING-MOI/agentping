@@ -5,8 +5,8 @@
 #
 #   sh linux.sh <dir with the archives> [expected rev]
 #
-# The directory holds t3-watch-<ver>-<target>.tar.gz and its .sha256, and,
-# for the test suite, t3-watch-tests-<ver>-<target>.tar.gz and its .sha256:
+# The directory holds agentping-<ver>-<target>.tar.gz and its .sha256, and,
+# for the test suite, agentping-tests-<ver>-<target>.tar.gz and its .sha256:
 # the test binaries cross-built on macOS, and the source they were built
 # from, which unpack under /tmp/t3wx and /tmp/t3wsrc (the paths they were
 # built with). The archive's own binary replaces the one the tests were
@@ -21,21 +21,21 @@ case "$(uname -m)" in
   *) echo "unsupported machine $(uname -m)"; exit 2 ;;
 esac
 echo "host $(hostname) $(uname -srm); $(ldd --version 2>&1 | head -1); $(date -u +%FT%TZ)"
-TAR=$(ls "$D"/t3-watch-*-"$TARGET".tar.gz | grep -v tests | head -1)
+TAR=$(ls "$D"/agentping-*-"$TARGET".tar.gz | grep -v tests | head -1)
 (cd "$D" && sha256sum -c "$(basename "$TAR").sha256") || exit 1
 W=$(mktemp -d /tmp/t3wlinux.XXXX)
 tar -xzf "$TAR" -C "$W"
-BIN=$(ls "$W"/*/t3-watch)
+BIN=$(ls "$W"/*/agentping)
 "$BIN" --version
 if [ -n "$REV" ] && ! "$BIN" --version | grep -q "rev $REV"; then
   echo "FAIL: --version does not name rev $REV"; exit 1
 fi
 FAILED=0
-TESTS=$(ls "$D"/t3-watch-tests-*-"$TARGET".tar.gz 2>/dev/null | head -1)
+TESTS=$(ls "$D"/agentping-tests-*-"$TARGET".tar.gz 2>/dev/null | head -1)
 if [ -n "$TESTS" ]; then
   (cd "$D" && sha256sum -c "$(basename "$TESTS").sha256") || exit 1
   rm -rf /tmp/t3wx /tmp/t3wsrc && tar -xzf "$TESTS" -C /
-  cp "$BIN" "/tmp/t3wx/$TARGET/release/t3-watch"
+  cp "$BIN" "/tmp/t3wx/$TARGET/release/agentping"
   for t in /tmp/t3wx/"$TARGET"/release/deps/*; do
     [ -f "$t" ] && [ -x "$t" ] || continue
     name=$(basename "$t")

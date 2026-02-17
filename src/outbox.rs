@@ -4,7 +4,7 @@
 //! `<state>/outbox-v4/<id>.json` (0600 in a 0700 directory, fsynced, renamed
 //! into place). The waiting client then tries it inline. A 2xx removes the
 //! entry; anything else leaves it for the sender, which runs inside the
-//! daemon (or as `t3-watch outbox run`) and retries with exponential
+//! daemon (or as `agentping outbox run`) and retries with exponential
 //! backoff, capped at five minutes, until a 2xx or the entry's expiry, when
 //! it moves to `dead/`. One sender at a time holds `sender.lock`.
 //! A server's `Retry-After` is a floor, not a suggestion: it is stored as the
@@ -69,7 +69,7 @@
 //! `status`, the exit code of `outbox run --once`, and the daemon's decision
 //! to stay up.
 //!
-//! Every attempt for an entry carries the same `X-T3-Watch-Id` and
+//! Every attempt for an entry carries the same `X-AgentPing-Id` and
 //! `Idempotency-Key`, so a receiver that got a request but whose answer was
 //! lost (or a sender that crashed between the 2xx and removing the entry)
 //! sees a duplicate it can drop, never a different event.
@@ -111,7 +111,7 @@ pub struct Entry {
     pub secret: Option<String>,
     pub created_ms: u64,
     pub expires_ms: u64,
-    /// Every POST so far, inline ones included (sent as X-T3-Watch-Attempt).
+    /// Every POST so far, inline ones included (sent as X-AgentPing-Attempt).
     pub attempts: u32,
     /// The sender's own retries, which set the backoff. Above zero, the
     /// client no longer attempts it inline.
@@ -1047,7 +1047,7 @@ fn backoff(attempts: u32, jitter: &mut Jitter) -> Duration {
     jitter.backoff(attempts.saturating_sub(1), BASE_DELAY, MAX_DELAY)
 }
 
-// ---- this build's outbox, as the rest of t3-watch sees it ----------------
+// ---- this build's outbox, as the rest of agentping sees it ----------------
 
 /// Takes the entry's lease if nobody holds it. `Ok(None)`: someone does.
 pub fn try_lease(id: &str) -> Result<Option<Lease>, String> {
@@ -1319,15 +1319,15 @@ fn legacy_v2_has_work() -> bool {
 /// that store until an operator acknowledges that none runs. A daemon of
 /// theirs answering at a default socket refuses even then. Their absence
 /// there proves nothing: an `outbox run` without a daemon, or a daemon on a
-/// custom `T3_WATCH_SOCKET`, cannot be seen from here.
+/// custom `AGENTPING_SOCKET`, cannot be seen from here.
 pub fn legacy_v2_precondition() -> Option<Value> {
     if !legacy_v2_has_work() {
         return None;
     }
     let senders = incompatible_senders();
     let action = "stop every engine-5 (0.3.0) and engine-6 (0.4.0) sender with access to this state directory \
-                  (daemons, including any on a custom T3_WATCH_SOCKET, and `t3-watch outbox run` without a \
-                  daemon), then run `t3-watch outbox legacy-ack --senders-stopped`";
+                  (daemons, including any on a custom AGENTPING_SOCKET, and `agentping outbox run` without a \
+                  daemon), then run `agentping outbox legacy-ack --senders-stopped`";
     if !senders.is_empty() {
         return Some(json!({
             "store": "outbox-v2",
@@ -1473,9 +1473,9 @@ pub fn run_forever(log: &dyn Fn(&str)) -> ! {
 /// has a receipt beside it (`legacyConversionsIncomplete`). Found when a
 /// daemon of theirs is alive at a default socket (holding its socket lock,
 /// which those daemons keep until they exit, see `util::daemon_alive`):
-/// where it would listen in this environment (`$XDG_RUNTIME_DIR/t3-watch/`
+/// where it would listen in this environment (`$XDG_RUNTIME_DIR/agentping/`
 /// or the state directory), and the state directory as well (a daemon started without
-/// `$XDG_RUNTIME_DIR`). A daemon on a custom `T3_WATCH_SOCKET`, or an
+/// `$XDG_RUNTIME_DIR`). A daemon on a custom `AGENTPING_SOCKET`, or an
 /// `outbox run` without a daemon, is not found this way.
 pub fn incompatible_senders() -> Vec<Value> {
     let risks = [
@@ -1501,7 +1501,7 @@ pub fn incompatible_senders() -> Vec<Value> {
                     "engine": engine,
                     "socket": sock.display().to_string(),
                     "risk": risk,
-                    "action": "stop it with its own binary's `t3-watch stop` while engine-4 clients may be running",
+                    "action": "stop it with its own binary's `agentping stop` while engine-4 clients may be running",
                 }));
             }
         }

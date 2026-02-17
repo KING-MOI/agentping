@@ -1,7 +1,7 @@
 //! Native Claude Code sessions, watched through Claude Code's documented
 //! hooks (experimental; see `docs/native-sessions.md`).
 //!
-//! `t3-watch hook claude-code` runs as an async command hook. It reads the
+//! `agentping hook claude-code` runs as an async command hook. It reads the
 //! hook's JSON from stdin and appends the event's name and type, and
 //! nothing else (no prompt, message, tool input or path), to
 //! `<state>/native/claude-code/<session_id>.jsonl`. It never prints a
@@ -274,12 +274,12 @@ mod tests {
 
     #[test]
     fn hook_commands_quote_the_binary_path_for_the_shell() {
-        assert_eq!(shell_quote("/usr/local/bin/t3-watch"), "/usr/local/bin/t3-watch");
-        assert_eq!(shell_quote("/Users/a b/t3-watch"), "'/Users/a b/t3-watch'");
+        assert_eq!(shell_quote("/usr/local/bin/agentping"), "/usr/local/bin/agentping");
+        assert_eq!(shell_quote("/Users/a b/agentping"), "'/Users/a b/agentping'");
         assert_eq!(shell_quote("/x/it's"), r"'/x/it'\''s'");
         assert_eq!(
-            claude_settings("/Users/a b/t3-watch")["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "'/Users/a b/t3-watch' hook claude-code"
+            claude_settings("/Users/a b/agentping")["hooks"]["Stop"][0]["hooks"][0]["command"],
+            "'/Users/a b/agentping' hook claude-code"
         );
         // Tool events no longer change the folded state, so no hook for them.
         let s = claude_settings("/x");
@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn settings_run_the_hook_asynchronously_on_every_folded_event() {
-        let s = claude_settings("/opt/t3-watch");
+        let s = claude_settings("/opt/agentping");
         for event in [
             "UserPromptSubmit",
             "Stop",
@@ -299,7 +299,7 @@ mod tests {
         ] {
             let h = &s["hooks"][event][0]["hooks"][0];
             assert_eq!(h["async"], true, "{event}");
-            assert_eq!(h["command"], "/opt/t3-watch hook claude-code", "{event}");
+            assert_eq!(h["command"], "/opt/agentping hook claude-code", "{event}");
         }
     }
 }

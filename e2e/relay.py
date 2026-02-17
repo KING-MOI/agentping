@@ -1,20 +1,20 @@
-"""A loopback relay between t3-watch and a real webhook receiver, for the
+"""A loopback relay between agentping and a real webhook receiver, for the
 durable-replay gate: stopping this process is a controlled outage of the
 watcher's path to the receiver only. No firewall rule, no network change,
 nothing else on the host is affected.
 
-t3-watch posts to http://127.0.0.1:<port>/hook. The relay forwards each
-request unchanged (body, Content-Type, every X-T3-Watch-* header,
+agentping posts to http://127.0.0.1:<port>/hook. The relay forwards each
+request unchanged (body, Content-Type, every X-AgentPing-* header,
 Idempotency-Key, Authorization) to the receiver named by the environment
 variable you pass, and answers with the receiver's status. The signature
-t3-watch computes covers the body, id and timestamp, which pass through
+agentping computes covers the body, id and timestamp, which pass through
 untouched, so the receiver verifies it as usual.
 
 usage: T3W_RELAY_TARGET=<receiver URL> python3 -I e2e/relay.py <port> <log>
 
 The target URL may carry a secret path: it is read from the environment,
 never printed or logged. The log holds one JSON line per request: arrival
-time, X-T3-Watch-Id, -Event, -Attempt, and the receiver's status (or the
+time, X-AgentPing-Id, -Event, -Attempt, and the receiver's status (or the
 error class), nothing else.
 """
 import http.server, json, os, sys, time, urllib.error, urllib.request
@@ -31,9 +31,9 @@ class H(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         headers = {k: v for k, v in self.headers.items()
-                   if k.lower() in PASS or k.lower().startswith("x-t3-watch-")}
-        entry = {"t": round(time.time(), 3), "id": self.headers.get("X-T3-Watch-Id"),
-                 "event": self.headers.get("X-T3-Watch-Event"), "attempt": self.headers.get("X-T3-Watch-Attempt")}
+                   if k.lower() in PASS or k.lower().startswith("x-agentping-")}
+        entry = {"t": round(time.time(), 3), "id": self.headers.get("X-AgentPing-Id"),
+                 "event": self.headers.get("X-AgentPing-Event"), "attempt": self.headers.get("X-AgentPing-Attempt")}
         status = 502
         try:
             req = urllib.request.Request(TARGET, data=body, headers=headers, method="POST")

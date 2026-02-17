@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Delivery timeline of one t3-watch wait, from its trace, for acceptance.
+"""Delivery timeline of one agentping wait, from its trace, for acceptance.
 
-Reads `<state>/trace.jsonl` (written by t3-watch; ids, statuses and times
+Reads `<state>/trace.jsonl` (written by agentping; ids, statuses and times
 only) and prints, for one wait, every step from T3's run completion to the
 webhook's 2xx, with the time since completion and since the previous step.
 Read-only; standard library only. Run it with `python3 -I`.

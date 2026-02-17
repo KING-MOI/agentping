@@ -10,7 +10,7 @@
 //! The app-server also sends every initialized connection each thread's
 //! `thread/status/changed` notifications, without any subscription; they
 //! are what tells one request from the next (see `record_requests`).
-//! t3-watch never resumes, subscribes, starts, steers or interrupts a turn,
+//! agentping never resumes, subscribes, starts, steers or interrupts a turn,
 //! and never answers a server request. With codex-cli 0.166.0 a
 //! `thread/resume` makes the caller a recipient of the owner's approval
 //! requests, so a watcher that resumed could approve; the read-only calls
@@ -19,7 +19,7 @@
 //! the app-server that runs the thread, so the socket must be that one's.
 //!
 //! The app-server keeps no record of past requests. Codex's documented
-//! `PermissionRequest` hook does: `t3-watch hook codex`, installed by the
+//! `PermissionRequest` hook does: `agentping hook codex`, installed by the
 //! user as an async hook (`--print-settings`), appends one line per approval
 //! request (time, turn id, tool name) to
 //! `<state>/native/codex/<session>.requests.jsonl`. An async hook cannot
@@ -78,10 +78,10 @@ pub fn codex_thread_id(id: &str) -> String {
     format!("{CODEX_PREFIX}{id}")
 }
 
-/// The app-server socket to read from: `$T3_WATCH_CODEX_SOCKET`, else the
+/// The app-server socket to read from: `$AGENTPING_CODEX_SOCKET`, else the
 /// shared daemon's control socket under `$CODEX_HOME` (default `~/.codex`).
 pub fn default_socket() -> PathBuf {
-    if let Some(p) = std::env::var_os("T3_WATCH_CODEX_SOCKET").filter(|p| !p.is_empty()) {
+    if let Some(p) = std::env::var_os("AGENTPING_CODEX_SOCKET").filter(|p| !p.is_empty()) {
         return PathBuf::from(p);
     }
     let home = std::env::var_os("CODEX_HOME")
@@ -297,7 +297,7 @@ struct Conn {
     /// The session whose hook log holds the thread's requests (`sessionId`
     /// from `thread/read`; the thread id for a thread of its own).
     session: String,
-    /// Whether `hooks/list` lists a trusted, enabled `t3-watch hook codex`
+    /// Whether `hooks/list` lists a trusted, enabled `agentping hook codex`
     /// for this state directory, and when it was asked.
     hooks: Option<(bool, Instant)>,
 }
@@ -321,7 +321,7 @@ impl Conn {
         };
         c.call(
             "initialize",
-            json!({ "clientInfo": { "name": "t3-watch", "title": "t3-watch (read-only watcher)",
+            json!({ "clientInfo": { "name": "agentping", "title": "agentping (read-only watcher)",
                                      "version": crate::version::VERSION } }),
             cancel,
         )?;
@@ -330,7 +330,7 @@ impl Conn {
         Ok(c)
     }
 
-    /// Whether the user installed and trusted `t3-watch hook codex` for this
+    /// Whether the user installed and trusted `agentping hook codex` for this
     /// state directory, as `hooks/list` (read-only) lists the hooks for the
     /// thread's working directory. An app-server without `hooks/list`
     /// answers an error: no hook.
@@ -355,7 +355,7 @@ impl Conn {
     }
 
     /// Keeps a status notification of the watched thread. Any other
-    /// notification is dropped, and so is any server request: t3-watch never
+    /// notification is dropped, and so is any server request: agentping never
     /// answers one, so it can never approve or decline anything.
     fn take_notification(&mut self, m: &Value) {
         if m["method"] == "thread/status/changed" && m["params"]["threadId"].as_str() == Some(self.thread.as_str()) {
@@ -648,7 +648,8 @@ fn park(socket: PathBuf, conn: Conn) {
     }
     KEPT.store(parked.len(), Ordering::SeqCst);
     drop(parked);
-    if !DRAINING.swap(true, Ordering::SeqCst) && util::spawn_thread("t3-watch-codex", 128 * 1024, drain_parked).is_err()
+    if !DRAINING.swap(true, Ordering::SeqCst)
+        && util::spawn_thread("agentping-codex", 128 * 1024, drain_parked).is_err()
     {
         DRAINING.store(false, Ordering::SeqCst);
     }
@@ -669,13 +670,13 @@ pub fn lingering() -> usize {
     KEPT.load(Ordering::SeqCst)
 }
 
-/// Test hook: with `T3_WATCH_TEST_CODEX_DRAIN_MS` set, each drain round
+/// Test hook: with `AGENTPING_TEST_CODEX_DRAIN_MS` set, each drain round
 /// reads each kept connection that long and rounds follow each other
 /// without a pause, so a test can start a wait in the middle of one.
 fn drain_wait() -> Option<Duration> {
     static WAIT: std::sync::OnceLock<Option<Duration>> = std::sync::OnceLock::new();
     *WAIT.get_or_init(|| {
-        std::env::var("T3_WATCH_TEST_CODEX_DRAIN_MS")
+        std::env::var("AGENTPING_TEST_CODEX_DRAIN_MS")
             .ok()
             .and_then(|v| v.parse().ok())
             .map(Duration::from_millis)
@@ -1244,7 +1245,7 @@ fn release_hookless(unmatched: &mut Vec<Count>, fifo: Option<(u64, u64)>, now: u
     }
 }
 
-/// `t3-watch hook codex`: records one `PermissionRequest` from `input` (the
+/// `agentping hook codex`: records one `PermissionRequest` from `input` (the
 /// hook's stdin) in `home`'s hook log: the time, the turn id and the tool
 /// name, never the command, its input or a path. Any other event is
 /// ignored. An error is for the caller to log; the hook still succeeds.
@@ -1285,7 +1286,7 @@ pub fn codex_hook_settings(bin: &str, home: &Path) -> String {
         crate::native::shell_quote(&home.display().to_string())
     );
     format!(
-        "# t3-watch: records each Codex approval request (its time, turn id and\n\
+        "# agentping: records each Codex approval request (its time, turn id and\n\
          # tool name; never the command or its input) so that a wait reports a\n\
          # request that opened and closed while nothing was watching. It runs\n\
          # async: it cannot approve, deny or change anything. Codex runs it once\n\
@@ -1300,7 +1301,7 @@ pub fn codex_hook_settings(bin: &str, home: &Path) -> String {
     )
 }
 
-/// `hooks/list` lists `t3-watch hook codex` recording into this state
+/// `hooks/list` lists `agentping hook codex` recording into this state
 /// directory (as given, or resolved), enabled and trusted (or managed), for
 /// `PermissionRequest`.
 fn our_hook_listed(v: &Value, homes: &[String]) -> bool {

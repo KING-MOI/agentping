@@ -3,10 +3,10 @@
 # outage (gate T3b in docs/acceptance-manifest.md). Run it where the bot's
 # webhook URL and secret already are. Nothing here reads, prints or stores
 # them: the URL goes to e2e/relay.py through T3W_RELAY_TARGET, the secret to
-# t3-watch through --webhook-secret-env.
+# agentping through --webhook-secret-env.
 #
 #   T3W_RELAY_TARGET=<bot webhook URL> T3W_SECRET=<webhook secret> \
-#     e2e/acceptance/real-receiver-replay.sh <t3-watch> <thread URL> [port]
+#     e2e/acceptance/real-receiver-replay.sh <agentping> <thread URL> [port]
 #
 # The thread is a disposable T3 test thread that you make complete while the
 # relay is down (the script tells you when). The outage is this watcher's

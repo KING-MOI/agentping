@@ -42,12 +42,12 @@ pub fn boot_ms() -> u64 {
     (ts.tv_sec as u64) * 1000 + (ts.tv_nsec as u64) / 1_000_000 + simulated_suspend_ms()
 }
 
-/// Test hook: with `T3_WATCH_TEST_SUSPEND_FILE` set, the number of
+/// Test hook: with `AGENTPING_TEST_SUSPEND_FILE` set, the number of
 /// milliseconds in that file is added to the suspend-inclusive clock, as if
 /// the host had slept that long. Unset (always, outside tests) it is zero.
 fn simulated_suspend_ms() -> u64 {
     static PATH: std::sync::OnceLock<Option<std::path::PathBuf>> = std::sync::OnceLock::new();
-    PATH.get_or_init(|| std::env::var_os("T3_WATCH_TEST_SUSPEND_FILE").map(Into::into))
+    PATH.get_or_init(|| std::env::var_os("AGENTPING_TEST_SUSPEND_FILE").map(Into::into))
         .as_ref()
         .and_then(|p| fs::read_to_string(p).ok())
         .and_then(|s| s.trim().parse().ok())
@@ -407,7 +407,7 @@ pub fn check_private(meta: &fs::Metadata, what: &Path) -> Result<(), String> {
 }
 
 /// Creates `dir` (and parents) if needed and makes it 0700. Refuses a symlink
-/// or a directory owned by someone else. Only for directories t3-watch owns.
+/// or a directory owned by someone else. Only for directories agentping owns.
 pub fn ensure_private_dir(dir: &Path) -> io::Result<()> {
     fs::DirBuilder::new().recursive(true).mode(0o700).create(dir)?;
     let meta = fs::symlink_metadata(dir)?;
@@ -562,7 +562,7 @@ pub fn open_private_read(path: &Path) -> io::Result<File> {
     Ok(f)
 }
 
-/// Whether a t3-watch daemon (of any build) is alive at `sock`. The lock is
+/// Whether an agentping daemon (of any build) is alive at `sock`. The lock is
 /// what decides: every build since engine 4 takes the flock on
 /// `<sock>.lock` before it binds and keeps it until it exits (checked in
 /// the engine-5 and engine-6 sources), whether or not it still accepts.
@@ -670,10 +670,10 @@ pub fn connect_unix(path: &Path, timeout: Duration) -> io::Result<std::os::unix:
     }
 }
 
-/// Exits with status 97 at a named point when `T3_WATCH_TEST_FAULT` names
+/// Exits with status 97 at a named point when `AGENTPING_TEST_FAULT` names
 /// it: crash-recovery tests stop the process exactly there.
 pub fn test_fault(point: &str) {
-    if std::env::var_os("T3_WATCH_TEST_FAULT").is_some_and(|p| p == point) {
+    if std::env::var_os("AGENTPING_TEST_FAULT").is_some_and(|p| p == point) {
         std::process::exit(97);
     }
 }

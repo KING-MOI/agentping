@@ -16,7 +16,7 @@
       "p90Ms": 1.25,
       "minMs": 0.89
     },
-    "t3watchVersion": {
+    "agentpingVersion": {
       "runs": 300,
       "medianMs": 1.68,
       "p90Ms": 1.78,
@@ -64,12 +64,12 @@
         "maxRssBytesMedian": 1114112,
         "peakFootprintBytesMedian": 1130736
       },
-      "t3watchVersion": {
+      "agentpingVersion": {
         "runs": 20,
         "maxRssBytesMedian": 2113536,
         "peakFootprintBytesMedian": 1327464
       },
-      "t3watchWaitSettledViaDaemon": {
+      "agentpingWaitSettledViaDaemon": {
         "runs": 20,
         "maxRssBytesMedian": 2490368,
         "peakFootprintBytesMedian": 1327464

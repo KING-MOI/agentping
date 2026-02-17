@@ -28,7 +28,7 @@ pub fn record(kind: &str, fields: Value) {
     // Unit tests run without an isolated state directory: never write to
     // the real one from them.
     #[cfg(test)]
-    if std::env::var_os("T3_WATCH_HOME").is_none() {
+    if std::env::var_os("AGENTPING_HOME").is_none() {
         return;
     }
     let path = config::trace_path();

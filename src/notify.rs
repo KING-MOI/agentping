@@ -242,8 +242,8 @@ impl Notify {
                         return Err("--webhook-header-env: invalid header name".into());
                     }
                     let lower = name.to_ascii_lowercase();
-                    if RESERVED_HEADERS.contains(&lower.as_str()) || lower.starts_with("x-t3-watch-") {
-                        return Err(format!("--webhook-header-env: {name} is set by t3-watch itself"));
+                    if RESERVED_HEADERS.contains(&lower.as_str()) || lower.starts_with("x-agentping-") {
+                        return Err(format!("--webhook-header-env: {name} is set by agentping itself"));
                     }
                     let value = read_env(var, "--webhook-header-env")?;
                     if !header_value_ok(&value) {
@@ -446,7 +446,7 @@ pub fn agent_for(w: &Webhook) -> ureq::Agent {
         .http_status_as_error(false)
         .max_redirects(0)
         .https_only(w.url.starts_with("https://"))
-        .user_agent(concat!("t3-watch/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("agentping/", env!("CARGO_PKG_VERSION")))
         .build()
         .into()
 }
@@ -462,7 +462,7 @@ pub struct Attempt {
 }
 
 /// One signed POST. The same `id` goes out on every attempt as
-/// `X-T3-Watch-Id` and `Idempotency-Key`, so a receiver can drop
+/// `X-AgentPing-Id` and `Idempotency-Key`, so a receiver can drop
 /// duplicates (a retry after a lost response, or the outbox resending after
 /// a crash). The timestamp and signature are fresh for each attempt.
 pub fn post_once(
@@ -478,14 +478,14 @@ pub fn post_once(
     let mut req = agent
         .post(&w.url)
         .header("Content-Type", "application/json")
-        .header("X-T3-Watch-Event", event)
-        .header("X-T3-Watch-Id", id)
+        .header("X-AgentPing-Event", event)
+        .header("X-AgentPing-Id", id)
         .header("Idempotency-Key", id)
-        .header("X-T3-Watch-Attempt", attempt.to_string());
+        .header("X-AgentPing-Attempt", attempt.to_string());
     if let Some(secret) = &w.secret {
         req = req
-            .header("X-T3-Watch-Timestamp", ts.to_string())
-            .header("X-T3-Watch-Signature", signature(secret, ts, id, body));
+            .header("X-AgentPing-Timestamp", ts.to_string())
+            .header("X-AgentPing-Signature", signature(secret, ts, id, body));
     }
     for (k, v) in &w.headers {
         req = req.header(k.as_str(), v.as_str());
@@ -705,7 +705,7 @@ fn status_json(status: ExitStatus) -> Value {
 /// appended. Never our stdout (the result JSON) and never our stderr: a
 /// hook that leaves a background process holding an inherited pipe would
 /// keep whoever reads our output (an agent harness) waiting long after
-/// t3-watch has exited.
+/// agentping has exited.
 fn hook_log(path: &Path) -> Stdio {
     if fs::symlink_metadata(path).is_ok_and(|m| m.is_file() && m.len() > 1 << 20) {
         let _ = fs::remove_file(path);
@@ -720,7 +720,7 @@ fn hook_log(path: &Path) -> Stdio {
 fn run_hook(h: &Hook, event: &str, body: &[u8]) -> Value {
     let mut child = match Command::new(&h.program)
         .args(&h.args)
-        .env("T3_WATCH_EVENT", event)
+        .env("AGENTPING_EVENT", event)
         .stdin(Stdio::piped())
         .stdout(hook_log(&h.log))
         .stderr(hook_log(&h.log))
@@ -796,8 +796,8 @@ mod tests {
         a.header_envs = vec!["Bad Name=T3W_UNIT_H".into()];
         assert!(Notify::from_args(&a).err().unwrap().contains("header name"));
         a.header_envs = vec!["Content-Length=T3W_UNIT_H".into()];
-        assert!(Notify::from_args(&a).err().unwrap().contains("set by t3-watch"));
-        a.header_envs = vec!["X-T3-Watch-Id=T3W_UNIT_H".into()];
+        assert!(Notify::from_args(&a).err().unwrap().contains("set by agentping"));
+        a.header_envs = vec!["X-AgentPing-Id=T3W_UNIT_H".into()];
         assert!(Notify::from_args(&a).is_err());
         a.header_envs = vec!["Idempotency-Key=T3W_UNIT_H".into()];
         assert!(Notify::from_args(&a).is_err());

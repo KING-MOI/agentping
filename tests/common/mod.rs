@@ -1,6 +1,6 @@
 //! Test fixtures: a mock T3 Streamable HTTP MCP server (with a mock OAuth
 //! authorization server on the same origin), a mock webhook receiver, a mock
-//! local `t3` CLI, and helpers to run the real `t3-watch` binary against them.
+//! local `t3` CLI, and helpers to run the real `agentping` binary against them.
 
 #![allow(dead_code)]
 
@@ -17,8 +17,8 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-pub const BIN: &str = env!("CARGO_BIN_EXE_t3-watch");
-/// This build's engine revision, its daemon socket under `T3_WATCH_HOME`,
+pub const BIN: &str = env!("CARGO_BIN_EXE_agentping");
+/// This build's engine revision, its daemon socket under `AGENTPING_HOME`,
 /// and its outbox directory.
 pub const ENGINE: u64 = 19;
 pub const SOCK: &str = "daemon-e19.sock";
@@ -907,7 +907,7 @@ impl MockHook {
 
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// An isolated T3_WATCH_HOME, so each test gets its own daemon and config.
+/// An isolated AGENTPING_HOME, so each test gets its own daemon and config.
 /// Kept short because Unix socket paths are limited to ~104 bytes.
 pub struct Env {
     pub home: PathBuf,
@@ -925,14 +925,14 @@ impl Env {
     pub fn cmd(&self, args: &[&str]) -> Command {
         let mut c = Command::new(BIN);
         c.args(args)
-            .env("T3_WATCH_HOME", &self.home)
-            .env("T3_WATCH_IDLE_EXIT", "2s")
-            .env_remove("T3_WATCH_SOCKET")
-            .env_remove("T3_WATCH_NO_DAEMON")
-            .env_remove("T3_WATCH_T3_BIN")
-            .env_remove("T3_WATCH_MAX_WATCHES")
-            .env_remove("T3_WATCH_MAX_CONNECTIONS")
-            .env_remove("T3_WATCH_CODEX_SOCKET")
+            .env("AGENTPING_HOME", &self.home)
+            .env("AGENTPING_IDLE_EXIT", "2s")
+            .env_remove("AGENTPING_SOCKET")
+            .env_remove("AGENTPING_NO_DAEMON")
+            .env_remove("AGENTPING_T3_BIN")
+            .env_remove("AGENTPING_MAX_WATCHES")
+            .env_remove("AGENTPING_MAX_CONNECTIONS")
+            .env_remove("AGENTPING_CODEX_SOCKET")
             .env("CODEX_HOME", self.home.join("no-codex"))
             .env("T3CODE_HOME", self.home.join("no-t3"))
             .stdin(Stdio::null())
@@ -964,7 +964,7 @@ impl Env {
         serde_json::from_slice(&out.stdout).unwrap_or(Value::Null)
     }
 
-    /// Polls `t3-watch status` until `pred` holds.
+    /// Polls `agentping status` until `pred` holds.
     pub fn wait_status(&self, what: &str, timeout: Duration, pred: impl Fn(&Value) -> bool) -> Value {
         let deadline = Instant::now() + timeout;
         loop {
@@ -1012,7 +1012,7 @@ pub fn finish(mut child: Child, timeout: Duration) -> (i32, Value, String) {
         }
         if Instant::now() > deadline {
             let _ = child.kill();
-            panic!("t3-watch did not exit within {timeout:?}");
+            panic!("agentping did not exit within {timeout:?}");
         }
         thread::sleep(Duration::from_millis(10));
     }
@@ -1021,7 +1021,7 @@ pub fn finish(mut child: Child, timeout: Duration) -> (i32, Value, String) {
 /// Asserts the child is still running after `d`.
 pub fn still_running(child: &mut Child, d: Duration) {
     thread::sleep(d);
-    assert!(child.try_wait().unwrap().is_none(), "t3-watch exited early");
+    assert!(child.try_wait().unwrap().is_none(), "agentping exited early");
 }
 
 pub fn output_json(o: &Output) -> Value {

@@ -35,28 +35,28 @@ fn env_path(key: &str) -> Option<PathBuf> {
     env::var_os(key).filter(|v| !v.is_empty()).map(PathBuf::from)
 }
 
-/// `$T3_WATCH_HOME`, else `$XDG_CONFIG_HOME/t3-watch`, else `~/.config/t3-watch`.
+/// `$AGENTPING_HOME`, else `$XDG_CONFIG_HOME/agentping`, else `~/.config/agentping`.
 pub fn state_dir() -> PathBuf {
-    env_path("T3_WATCH_HOME")
-        .or_else(|| env_path("XDG_CONFIG_HOME").map(|p| p.join("t3-watch")))
-        .unwrap_or_else(|| home_dir().join(".config").join("t3-watch"))
+    env_path("AGENTPING_HOME")
+        .or_else(|| env_path("XDG_CONFIG_HOME").map(|p| p.join("agentping")))
+        .unwrap_or_else(|| home_dir().join(".config").join("agentping"))
 }
 
-/// True when the socket location was chosen with `T3_WATCH_SOCKET`, so its
-/// directory belongs to the user rather than to t3-watch.
+/// True when the socket location was chosen with `AGENTPING_SOCKET`, so its
+/// directory belongs to the user rather than to agentping.
 pub fn custom_socket() -> bool {
-    env_path("T3_WATCH_SOCKET").is_some()
+    env_path("AGENTPING_SOCKET").is_some()
 }
 
-/// The daemon socket. `$T3_WATCH_SOCKET` names it outright; otherwise it
+/// The daemon socket. `$AGENTPING_SOCKET` names it outright; otherwise it
 /// is this engine's default (see `default_socket_path`).
 pub fn socket_path() -> PathBuf {
-    env_path("T3_WATCH_SOCKET").unwrap_or_else(|| default_socket_path(crate::version::ENGINE))
+    env_path("AGENTPING_SOCKET").unwrap_or_else(|| default_socket_path(crate::version::ENGINE))
 }
 
 /// Where a daemon of engine revision `engine` listens by default, as every
-/// build since engine 4 resolves it: `$T3_WATCH_HOME` wins so tests and
-/// multiple users stay isolated; otherwise `$XDG_RUNTIME_DIR/t3-watch` when
+/// build since engine 4 resolves it: `$AGENTPING_HOME` wins so tests and
+/// multiple users stay isolated; otherwise `$XDG_RUNTIME_DIR/agentping` when
 /// set (Linux), else the state directory. The file name carries the engine,
 /// so a daemon left running by a build with other result semantics is never
 /// even reached by default (it would report results this build reads
@@ -65,9 +65,9 @@ pub fn socket_path() -> PathBuf {
 /// protects a custom socket.
 pub fn default_socket_path(engine: u32) -> PathBuf {
     let name = format!("daemon-e{engine}.sock");
-    if env_path("T3_WATCH_HOME").is_none() {
+    if env_path("AGENTPING_HOME").is_none() {
         if let Some(rt) = env_path("XDG_RUNTIME_DIR") {
-            return rt.join("t3-watch").join(name);
+            return rt.join("agentping").join(name);
         }
     }
     state_dir().join(name)
@@ -107,9 +107,9 @@ pub fn t3_base_dir() -> PathBuf {
     env_path("T3CODE_HOME").unwrap_or_else(|| home_dir().join(".t3"))
 }
 
-/// `$T3_WATCH_T3_BIN`, read by the client only.
+/// `$AGENTPING_T3_BIN`, read by the client only.
 pub fn t3_bin_override() -> Option<PathBuf> {
-    env_path("T3_WATCH_T3_BIN")
+    env_path("AGENTPING_T3_BIN")
 }
 
 /// Makes `p` absolute against the current directory and resolves symlinks

@@ -1,11 +1,11 @@
 #!/bin/sh
-# Durable delivery gates with the real binary, isolated (own T3_WATCH_HOME,
+# Durable delivery gates with the real binary, isolated (own AGENTPING_HOME,
 # a fake local t3 CLI, a loopback receiver; no network change):
 #   A. receiver down when the thread completes, daemon stopped and
 #      restarted while the event is queued, then the receiver comes up;
 #   B. the daemon is killed (SIGKILL) while its delivery attempt is in
 #      flight, then restarted.
-#   e2e/durable.sh <work dir> <t3-watch binary> <port>
+#   e2e/durable.sh <work dir> <agentping binary> <port>
 # Prints nothing; the result is <work dir>/timeline.txt. Remove the work
 # dir afterwards.
 set -u
@@ -19,8 +19,8 @@ read status ord < "$W/t3/threads/\$last"
 printf '{"thread":{"threadId":"%s","title":"durable","status":"%s","latestRunId":"run:thread:%s:ordinal:%s","pendingRequestCount":0},"messages":[]}\n' "\$last" "\$status" "\$last" "\$ord"
 SH
 chmod 755 "$W/t3/t3"
-export T3_WATCH_HOME="$W/home" T3_WATCH_IDLE_EXIT=120s
-unset T3_WATCH_SOCKET T3_WATCH_NO_DAEMON
+export AGENTPING_HOME="$W/home" AGENTPING_IDLE_EXIT=120s
+unset AGENTPING_SOCKET AGENTPING_NO_DAEMON
 ts() { python3 -I -c 'import time; print("%.3f" % time.time())'; }
 log() { echo "$(ts) $*" >> "$W/timeline.txt"; }
 olist() {

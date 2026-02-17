@@ -229,7 +229,7 @@ impl WaitRequest {
                     return Err(format!(
                         "--until workstream needs the mcp transport, but {} resolved to the local T3 CLI, \
                          which cannot prove that delegated work has settled; pair the machine with \
-                         `t3-watch auth login` and pass --machine or a thread URL, or use --until turn \
+                         `agentping auth login` and pass --machine or a thread URL, or use --until turn \
                          with --final-marker",
                         t.thread_id
                     ));
@@ -695,7 +695,7 @@ struct Snap {
 /// Bounds live upstream operations (MCP cycles and `t3` runs) across the
 /// hub. A permit is held by the thread doing the operation until it has
 /// really ended, so a cancelled long-poll still counts until its connection
-/// is gone. With `T3_WATCH_MAX_WATCHES=1` there is never more than one
+/// is gone. With `AGENTPING_MAX_WATCHES=1` there is never more than one
 /// request in flight, however many short waits come and go.
 struct OpBudget {
     live: Mutex<usize>,
@@ -774,7 +774,7 @@ struct Reported {
 
 impl Hub {
     pub fn new(label: &'static str) -> Arc<Self> {
-        Self::with_max_watches(label, env_limit("T3_WATCH_MAX_WATCHES", DEFAULT_MAX_WATCHES))
+        Self::with_max_watches(label, env_limit("AGENTPING_MAX_WATCHES", DEFAULT_MAX_WATCHES))
     }
 
     pub fn with_max_watches(label: &'static str, max_watches: usize) -> Arc<Self> {
@@ -841,7 +841,7 @@ impl Hub {
                         error_json(
                             "config",
                             &format!(
-                                "no saved machine named {:?}; run `t3-watch auth login <origin>` first",
+                                "no saved machine named {:?}; run `agentping auth login <origin>` first",
                                 t.machine
                             ),
                         )
@@ -850,7 +850,7 @@ impl Hub {
                         return Err(error_json(
                             "auth",
                             &format!(
-                                "machine {:?} has no token; run `t3-watch auth login {}`",
+                                "machine {:?} has no token; run `agentping auth login {}`",
                                 t.machine, m.origin
                             ),
                         ));
@@ -988,7 +988,7 @@ impl Hub {
         };
         if spawn {
             let (hub, watch) = (self.clone(), w.clone());
-            if let Err(e) = util::spawn_thread("t3-watch-worker", 256 * 1024, move || watch.run(&hub)) {
+            if let Err(e) = util::spawn_thread("agentping-worker", 256 * 1024, move || watch.run(&hub)) {
                 // Nobody will ever poll this watch: undo the subscription and
                 // tell the caller instead of letting it wait until timeout.
                 let mut g = lock(&w.inner);
@@ -1113,7 +1113,7 @@ impl Hub {
                         "via": self.label,
                         "threads": [self.thread_json(snap, t, req, clock)],
                         "recovered": new,
-                        "note": "these requests opened and closed while no t3-watch connection counted; the Codex \
+                        "note": "these requests opened and closed while no agentping connection counted; the Codex \
                                  PermissionRequest hook log recorded them. Their owner answered them: nothing waits on them",
                     }));
                 }
@@ -1298,7 +1298,7 @@ impl Hub {
             let native = |t: &TargetSpec| matches!(t.transport, Transport::ClaudeCode | Transport::Codex);
             out["action"] = json!(if req.targets.iter().all(native) {
                 "An approval or input request is waiting in a native Claude Code or Codex session. \
-                 Whoever runs that session answers it there; t3-watch never answers one. To keep \
+                 Whoever runs that session answers it there; agentping never answers one. To keep \
                  waiting past these requests, run again with --acknowledge <pendingKey>."
             } else if req.targets.iter().any(native) {
                 "A question or approval is waiting. Questions (userOnly false) may be answered with \
@@ -1668,7 +1668,7 @@ impl Watch {
         let (me, token) = (self.clone(), cancel.clone());
         // Started before the call: a suspend at any point of it counts.
         let sw = util::Stopwatch::start();
-        let spawned = util::spawn_thread("t3-watch-call", 256 * 1024, move || {
+        let spawned = util::spawn_thread("agentping-call", 256 * 1024, move || {
             let _permit = permit;
             let result = me.cycle(&token);
             let _ = tx.send(result);

@@ -1,7 +1,7 @@
 """A webhook receiver whose behavior a file controls, for durable-delivery
 gates. Mode file contents: "ok" (200), "hang" (record, then hold the
 request 600 s without answering). Records each request's arrival time,
-X-T3-Watch-Id, -Attempt and -Event as one JSON line; never the body.
+X-AgentPing-Id, -Attempt and -Event as one JSON line; never the body.
 
 usage: recvctl.py <port> <log> <mode file>
 """
@@ -16,9 +16,9 @@ class H(http.server.BaseHTTPRequestHandler):
         mode = open(MODE).read().strip()
         with open(LOG, "a") as f:
             f.write(json.dumps({"t": round(time.time(), 3), "mode": mode,
-                                "id": self.headers.get("X-T3-Watch-Id"),
-                                "attempt": self.headers.get("X-T3-Watch-Attempt"),
-                                "event": self.headers.get("X-T3-Watch-Event")}) + "\n")
+                                "id": self.headers.get("X-AgentPing-Id"),
+                                "attempt": self.headers.get("X-AgentPing-Attempt"),
+                                "event": self.headers.get("X-AgentPing-Event")}) + "\n")
         if mode == "hang":
             time.sleep(600)
             return

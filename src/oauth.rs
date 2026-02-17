@@ -1,7 +1,7 @@
 //! Read-only OAuth 2.0 pairing with a T3 MCP server (authorization code +
 //! PKCE S256, public client from dynamic registration).
 //!
-//! t3-watch only ever requests `orchestration:read`. Discovery follows RFC
+//! agentping only ever requests `orchestration:read`. Discovery follows RFC
 //! 9728 (protected resource metadata) and RFC 8414 (authorization server
 //! metadata) strictly, and every endpoint must be `https://` (plain `http://`
 //! only on loopback). Tokens go to machines.json (0600) and are never printed;
@@ -37,7 +37,7 @@ fn agent() -> ureq::Agent {
         .http_status_as_error(false)
         .max_redirects(0)
         .timeout_global(Some(Duration::from_secs(30)))
-        .user_agent(concat!("t3-watch/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("agentping/", env!("CARGO_PKG_VERSION")))
         .build()
         .into()
 }
@@ -191,7 +191,7 @@ pub fn register(d: &Discovery, redirect_uri: &str) -> Result<String, String> {
         &["authorization_code"]
     };
     let body = json!({
-        "client_name": "t3-watch (read-only watcher)",
+        "client_name": "agentping (read-only watcher)",
         "redirect_uris": [redirect_uri],
         "grant_types": grants,
         "response_types": ["code"],
@@ -377,7 +377,7 @@ pub fn recover_token(name: &str, origin: &str, used: &str) -> Recovery {
         // The refresh worked but saving it did not: keep using the new token
         // rather than ending the watch.
         Err(e) if fresh.is_some() => {
-            util::warn(&format!("t3-watch: warning: refreshed token could not be saved: {e}"));
+            util::warn(&format!("agentping: warning: refreshed token could not be saved: {e}"));
             Recovery::Token(fresh.unwrap())
         }
         Err(e) => Recovery::Retry(e),
@@ -414,7 +414,7 @@ fn store(name: &str, d: &Discovery, client_id: &str, token: Token, make_default:
         .collect();
     if !extra.is_empty() {
         util::warn(&format!(
-            "warning: server granted more than {SCOPE} ({}); t3-watch only calls read tools",
+            "warning: server granted more than {SCOPE} ({}); agentping only calls read tools",
             extra.join(" ")
         ));
     }
@@ -503,7 +503,7 @@ pub fn login(
     let pkce = Pkce::new();
     let url = authorize_url(&d, &client_id, &redirect_uri, &pkce);
     util::warn(&format!(
-        "Approve read-only ({SCOPE}) access for t3-watch in your browser:\n\n  {url}\n"
+        "Approve read-only ({SCOPE}) access for agentping in your browser:\n\n  {url}\n"
     ));
     if !no_browser {
         open_browser(&url);
@@ -526,10 +526,10 @@ pub fn login(
     // The browser only hears "paired" once the credentials are on disk.
     if let Some(s) = browser.as_mut() {
         let (status, text) = match &result {
-            Ok(_) => ("200 OK", "t3-watch is paired. You can close this tab."),
+            Ok(_) => ("200 OK", "agentping is paired. You can close this tab."),
             Err(_) => (
                 "400 Bad Request",
-                "t3-watch could not finish pairing. See the terminal for details.",
+                "agentping could not finish pairing. See the terminal for details.",
             ),
         };
         respond(s, status, text);
@@ -538,7 +538,7 @@ pub fn login(
 }
 
 fn respond(stream: &mut TcpStream, status: &str, text: &str) {
-    let body = format!("<!doctype html><title>t3-watch</title><p>{text}</p>");
+    let body = format!("<!doctype html><title>agentping</title><p>{text}</p>");
     let _ = write!(
         stream,
         "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n{body}",
@@ -593,7 +593,7 @@ fn accept_callback(listener: &TcpListener, wait: Duration, state: &str, issuer: 
     let timed_out = || {
         Err((
             None,
-            "timed out waiting for the browser callback; try `t3-watch auth oauth-start` on headless machines".into(),
+            "timed out waiting for the browser callback; try `agentping auth oauth-start` on headless machines".into(),
         ))
     };
     loop {
@@ -616,7 +616,7 @@ fn accept_callback(listener: &TcpListener, wait: Duration, state: &str, issuer: 
                         &mut stream,
                         deadline,
                         "400 Bad Request",
-                        "This link does not belong to the pending t3-watch login.",
+                        "This link does not belong to the pending agentping login.",
                     );
                     continue;
                 }
@@ -666,7 +666,7 @@ pub fn start(arg: &str, name: Option<&str>, redirect_port: u16, make_default: bo
         "machine": name,
         "scope": SCOPE,
         "authorizeUrl": url,
-        "next": "Open authorizeUrl in any browser and approve. The browser then fails to load a 127.0.0.1 callback page; copy that page's full URL and run: t3-watch auth oauth-finish '<callback-url>'",
+        "next": "Open authorizeUrl in any browser and approve. The browser then fails to load a 127.0.0.1 callback page; copy that page's full URL and run: agentping auth oauth-finish '<callback-url>'",
     }))
 }
 

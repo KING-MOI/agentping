@@ -4,7 +4,7 @@
 # else (for example on another machine's T3) and completes while this one
 # sleeps. A person sleeps the machine; nothing here does.
 #
-#   e2e/acceptance/suspend.sh <t3-watch> <thread URL> [webhook URL]
+#   e2e/acceptance/suspend.sh <agentping> <thread URL> [webhook URL]
 #
 # No CPU runs while the host sleeps: the completion is seen at the first
 # poll after the wake, so the webhook is late by the sleep. That lateness is

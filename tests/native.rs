@@ -1,4 +1,4 @@
-//! Native Claude Code sessions (experimental): `t3-watch hook claude-code`
+//! Native Claude Code sessions (experimental): `agentping hook claude-code`
 //! records the documented hook events, and `wait claude-code:<session_id>`
 //! watches them through the same engine as T3 threads. The hook input here
 //! is synthetic, shaped as the Claude Code hooks reference documents it.
@@ -128,7 +128,7 @@ fn a_turn_is_watched_from_its_hook_events_with_and_without_the_daemon() {
         assert_eq!(th["runOrdinal"], 1, "{out}");
         let reqs = hook_rx.requests();
         assert_eq!(reqs.len(), 1, "daemon={daemon}");
-        assert_eq!(reqs[0].headers["x-t3-watch-event"], "settled");
+        assert_eq!(reqs[0].headers["x-agentping-event"], "settled");
         assert!(String::from_utf8_lossy(&reqs[0].body).contains(&t));
     }
 }
@@ -226,11 +226,11 @@ fn the_printed_hook_command_runs_from_a_path_with_a_space() {
     let env = Env::new();
     let dir = env.home.join("with space");
     fs::create_dir_all(&dir).unwrap();
-    let bin = dir.join("t3-watch");
+    let bin = dir.join("agentping");
     fs::copy(BIN, &bin).unwrap();
     let out = Command::new(&bin)
         .args(["hook", "claude-code", "--print-settings"])
-        .env("T3_WATCH_HOME", &env.home)
+        .env("AGENTPING_HOME", &env.home)
         .output()
         .unwrap();
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -241,7 +241,7 @@ fn the_printed_hook_command_runs_from_a_path_with_a_space() {
     // Claude Code runs a command hook through the shell.
     let mut sh = Command::new("/bin/sh")
         .args(["-c", &command])
-        .env("T3_WATCH_HOME", &env.home)
+        .env("AGENTPING_HOME", &env.home)
         .stdin(Stdio::piped())
         .spawn()
         .unwrap();
