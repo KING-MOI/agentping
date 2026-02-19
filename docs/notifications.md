@@ -7,25 +7,25 @@ is woken by the process exiting. That is not universal: a background shell
 started on another machine through a remote tool (a remote `machineId`
 shell, for example) can exit without waking the bot that started it. In
 those setups, and for a bot without a background terminal at all, have
-t3-watch call the bot instead. The waiting client (never the shared daemon)
+agentping call the bot instead. The waiting client (never the shared daemon)
 delivers the notification after the wait ends and before it exits.
 
 ```sh
 export BOT_HOOK_URL='https://bot.example/hooks/t3'      # keep URLs and secrets out of argv
 export BOT_HOOK_SECRET='...'
-t3-watch wait mcp:launch:abc123 \
+agentping wait mcp:launch:abc123 \
   --webhook-url-env BOT_HOOK_URL --webhook-secret-env BOT_HOOK_SECRET \
   --webhook-header-env Authorization=BOT_HOOK_AUTH \
   --on-settle /usr/local/bin/wake-bot --on-settle-arg --channel --on-settle-arg ops
 ```
 
 - The webhook gets `POST` with the result JSON as the body.
-  `X-T3-Watch-Event` is the event (`settled`, `needs_input`, `timeout`,
+  `X-AgentPing-Event` is the event (`settled`, `needs_input`, `timeout`,
   `error`, or progress: `run_failed`, `upstream_unreachable`,
-  `upstream_restored`, `requests_recovered`, `heartbeat`). `X-T3-Watch-Id` and `Idempotency-Key`
+  `upstream_restored`, `requests_recovered`, `heartbeat`). `X-AgentPing-Id` and `Idempotency-Key`
   carry the same id on every retry of one event, inline or from the outbox;
-  `X-T3-Watch-Attempt` counts the attempts. With a secret,
-  `X-T3-Watch-Timestamp` and `X-T3-Watch-Signature: sha256=<hex>` carry an
+  `X-AgentPing-Attempt` counts the attempts. With a secret,
+  `X-AgentPing-Timestamp` and `X-AgentPing-Signature: sha256=<hex>` carry an
   HMAC-SHA256 over `<timestamp>.<id>.<body>`, fresh for each attempt.
 - The URL must be `https://` (plain `http://` only on 127.0.0.1, [::1] or
   localhost). Redirects are not followed. Network errors, 408, 429 and 5xx are
@@ -42,11 +42,11 @@ t3-watch wait mcp:launch:abc123 \
   attempts, status and an error category only, never the URL, headers, secret
   or response body.
 - `--on-settle` runs the program directly (no shell) with the
-  `--on-settle-arg` values, the result JSON on stdin and `T3_WATCH_EVENT` in
+  `--on-settle-arg` values, the result JSON on stdin and `AGENTPING_EVENT` in
   its environment. Its stdout and stderr go to `hooks.log` in the state
-  directory (0600), never to t3-watch's stdout or stderr: a hook that leaves
+  directory (0600), never to agentping's stdout or stderr: a hook that leaves
   a background process holding an inherited pipe would otherwise keep a
-  harness that reads t3-watch's output waiting after t3-watch has exited.
+  harness that reads agentping's output waiting after agentping has exited.
   After `--on-settle-timeout` (default 60 s) its whole process group is
   killed.
 - `--notify-on` takes `all` or a comma list of `settled`, `needs_input`,
@@ -96,8 +96,8 @@ With `--durable`, a webhook is never fire-and-forget:
    watch that ended mid-turn (at most 15 minutes, and only until that
    turn ends; `status` shows `codexKept`, docs/native-sessions.md). A
    daemon that is killed, or a host that is off or asleep, sends
-   nothing until a t3-watch command starts the daemon again (any `wait`
-   does) or a supervised `t3-watch outbox run` is running. One sender runs
+   nothing until an agentping command starts the daemon again (any `wait`
+   does) or a supervised `agentping outbox run` is running. One sender runs
    at a time (`outbox-v4/sender.lock`).
 5. Each entry has a lease (an flock on `<id>.lock`). Whoever sends it, the
    client inline or the sender, holds the lease for the attempt and for
@@ -201,12 +201,12 @@ With `--durable`, a webhook is never fire-and-forget:
    sender dead-letters an entry that expires before this build has held it.
    So this build **leaves `outbox-v2/` untouched** (no lock file, hold,
    delivery, receipt or fence change) until both of these hold:
-   - an operator has run `t3-watch outbox legacy-ack --senders-stopped`,
+   - an operator has run `agentping outbox legacy-ack --senders-stopped`,
      stating that no engine-5 or engine-6 sender (a daemon, one on a custom
-     `T3_WATCH_SOCKET`, or an `outbox run` without a daemon) runs with
+     `AGENTPING_SOCKET`, or an `outbox run` without a daemon) runs with
      access to this state directory; `--revoke` withdraws it;
    - no engine-5 or engine-6 daemon answers at a default socket
-     (`$XDG_RUNTIME_DIR/t3-watch/`, or the state directory, which is also
+     (`$XDG_RUNTIME_DIR/agentping/`, or the state directory, which is also
      checked). A daemon counts as alive if it holds its socket lock
      (`<socket>.lock`): engine-5 and engine-6 daemons take it before they
      bind and keep it until they exit, so one that has stopped accepting is
@@ -230,7 +230,7 @@ With `--durable`, a webhook is never fire-and-forget:
    every receipt; each entry's hold and receipt removal happen under one
    lease. Only then does it come down.
 
-Every attempt for an entry carries the same `X-T3-Watch-Id` and
+Every attempt for an entry carries the same `X-AgentPing-Id` and
 `Idempotency-Key`. A receiver that processed a request whose answer was lost,
 or a sender that crashed between the 2xx and removing the entry, produces a
 duplicate with the same id; receivers should drop repeats of an id they
@@ -245,22 +245,22 @@ delivery still in flight. Diagnostics on stderr are best effort: a closed
 stdout or stderr never changes the exit code or costs an event.
 
 ```sh
-t3-watch outbox list            # ids, events, destination origin, attempts, next attempt, last error
-t3-watch outbox run --once      # try every entry now, Retry-After permitting (exit 4 while some remain)
-t3-watch outbox run             # the sender in the foreground, for launchd/systemd
-t3-watch outbox drop <id>
-t3-watch outbox legacy-ack --senders-stopped   # see item 8: allow work on outbox-v2/
+agentping outbox list            # ids, events, destination origin, attempts, next attempt, last error
+agentping outbox run --once      # try every entry now, Retry-After permitting (exit 4 while some remain)
+agentping outbox run             # the sender in the foreground, for launchd/systemd
+agentping outbox drop <id>
+agentping outbox legacy-ack --senders-stopped   # see item 8: allow work on outbox-v2/
 ```
 
 An entry holds the webhook URL, extra headers and signing secret, protected
 like the OAuth tokens in machines.json; `outbox list` shows only the
-destination's origin. If the machine reboots, nothing resends until a
-t3-watch command starts the daemon again (any `wait` does), unless
-`t3-watch outbox run` is supervised by launchd or systemd.
+destination's origin. If the machine reboots, nothing resends until an
+agentping command starts the daemon again (any `wait` does), unless
+`agentping outbox run` is supervised by launchd or systemd.
 
 ## Outages, heartbeats and a dead host
 
-t3-watch separates what it can prove from what only someone else can:
+agentping separates what it can prove from what only someone else can:
 
 - **T3 unreachable from the watcher.** Network errors, 5xx, Cloudflare 530
   / 1033 and a 401 or 403 without a `WWW-Authenticate: Bearer` challenge
@@ -269,7 +269,7 @@ t3-watch separates what it can prove from what only someone else can:
   watcher keeps retrying, and since only a fresh proof can settle a wait, an
   outage never ends one as completed. Each thread in the result shows
   `upstream: {reachable: false, unreachableSince, unreachableForMs,
-  consecutiveFailures, lastError}` while it lasts, `t3-watch status` shows
+  consecutiveFailures, lastError}` while it lasts, `agentping status` shows
   the same per watch, and `--notify-unreachable <dur>` sends
   `upstream_unreachable` progress once an outage has lasted that long and
   `upstream_restored` when it ends.

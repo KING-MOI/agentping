@@ -1,10 +1,10 @@
 # Usage
 
-`t3-watch wait` blocks until the threads it watches settle, then prints
+`agentping wait` blocks until the threads it watches settle, then prints
 one line of JSON and exits:
 
 ```sh
-t3-watch wait mcp:launch:4c5afd1c... --expect-min-run-ordinal 2
+agentping wait mcp:launch:4c5afd1c... --expect-min-run-ordinal 2
 # ... minutes later ...
 {"event":"settled","outcome":"completed","until":"turn","mode":"all","elapsedMs":81234,"via":"daemon","threads":[{"machine":"local","threadId":"mcp:launch:4c5afd1c...","status":"completed","outcome":"completed","settled":true,"latestRunId":"run:thread:...:ordinal:2","runOrdinal":2,"title":"Fix the flaky test"}],"startedAt":"2026-11-06T18:01:02.000Z","endedAt":"2026-11-06T18:02:23.234Z","watchId":"5d1c..."}
 ```
@@ -14,16 +14,16 @@ t3-watch wait mcp:launch:4c5afd1c... --expect-min-run-ordinal 2
 If T3 Code runs here (`~/.t3` exists), bare thread ids just work:
 
 ```sh
-t3-watch wait mcp:launch:abc123
-t3-watch wait mcp:launch:abc mcp:launch:def --mode any   # first one to settle
-t3-watch wait http://127.0.0.1:3773/<envId>/<threadId>   # a local thread URL
+agentping wait mcp:launch:abc123
+agentping wait mcp:launch:abc mcp:launch:def --mode any   # first one to settle
+agentping wait http://127.0.0.1:3773/<envId>/<threadId>   # a local thread URL
 ```
 
 The local transport runs `t3 thread show --base-dir <dir> --messages 0 --json
 <threadId>` with the newest `~/.t3/runtime/versions/*/t3` (or `t3` on `PATH`)
 every `--interval` (default 5s). It needs no OAuth because it runs as the same
 user as the T3 server. `--base-dir`, `--t3-bin`, `$T3CODE_HOME` and
-`$T3_WATCH_T3_BIN` are resolved to absolute paths by the waiting client, so a
+`$AGENTPING_T3_BIN` are resolved to absolute paths by the waiting client, so a
 relative path means the same file however the daemon was started.
 
 The local CLI cannot prove that delegated work has settled, so
@@ -33,28 +33,28 @@ silently doing less. `--final-marker` works locally (see
 
 ## Threads on another machine
 
-Pair once with the machine's T3 Connect relay. t3-watch registers a public
+Pair once with the machine's T3 Connect relay. agentping registers a public
 OAuth client and asks only for `orchestration:read`, so the token can read
 thread state and nothing else.
 
 ```sh
 # On a desktop: opens the browser, catches the callback on 127.0.0.1.
-t3-watch auth login https://prod-05055d8a66f766cb.t3coderelay.com --name mini
+agentping auth login https://prod-05055d8a66f766cb.t3coderelay.com --name mini
 
 # On a headless agent box: copy-paste flow.
-t3-watch auth oauth-start https://prod-05055d8a66f766cb.t3coderelay.com --name mini
+agentping auth oauth-start https://prod-05055d8a66f766cb.t3coderelay.com --name mini
 #   open authorizeUrl anywhere, approve, copy the URL of the page that fails to load
-t3-watch auth oauth-finish 'http://127.0.0.1:8976/callback?code=...&state=...'
+agentping auth oauth-finish 'http://127.0.0.1:8976/callback?code=...&state=...'
 ```
 
-Then pass a thread URL and t3-watch picks the machine and environment from it:
+Then pass a thread URL and agentping picks the machine and environment from it:
 
 ```sh
-t3-watch wait 'https://prod-05055d8a66f766cb.t3coderelay.com/<envId>/mcp%3Alaunch%3Aabc123'
-t3-watch wait --machine mini mcp:launch:abc123
+agentping wait 'https://prod-05055d8a66f766cb.t3coderelay.com/<envId>/mcp%3Alaunch%3Aabc123'
+agentping wait --machine mini mcp:launch:abc123
 ```
 
-`t3-watch auth discover <origin>` prints a server's OAuth metadata without
+`agentping auth discover <origin>` prints a server's OAuth metadata without
 registering anything. `auth list`, `auth default <name>` and `auth logout
 <name>` manage saved machines.
 
@@ -65,7 +65,7 @@ Right after `t3_thread_send`, a thread can still report the previous run as
 `:ordinal:N`) so the stale state never wakes you:
 
 ```sh
-t3-watch wait mcp:launch:abc123 --expect-min-run-ordinal 2
+agentping wait mcp:launch:abc123 --expect-min-run-ordinal 2
 ```
 
 To skip a run you already know about without doing ordinal arithmetic, pass

@@ -4,7 +4,7 @@ A T3 turn and the work it starts are different things. On 2026-11-06 a
 research thread's run 2 finished its own turn after launching four reviewer
 threads; their completions came back as parent runs 3 to 5, and the
 synthesis was run 6. A watcher waiting for "run 2 or later, finished" exited
-at run 2, as it was asked to. t3-watch now offers two explicit contracts:
+at run 2, as it was asked to. agentping now offers two explicit contracts:
 
 | `--until` | Settles when | Proof | Transports |
 | --- | --- | --- | --- |
@@ -52,7 +52,7 @@ if a later run completed, and a failed latest run after a completed result
 run is a failure too. Success needs both to have succeeded.
 
 If a newer run appears (a late child completion continuing the parent),
-t3-watch waits again on it. If T3 finishes the wait without `resultRun`,
+agentping waits again on it. If T3 finishes the wait without `resultRun`,
 nothing can prove the workstream, and the result is an error
 (`error.kind = "unsupported"`, exit 2), never a completion.
 

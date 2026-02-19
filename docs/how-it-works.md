@@ -2,24 +2,24 @@
 
 ```
  agent A ─┐                                   ┌─ t3_thread_wait (long-poll) ─┐
- agent B ─┼─ t3-watch wait ─▶ daemon-e19.sock ▶ hub ┤   then t3_thread_read     ├─▶ relay /mcp
+ agent B ─┼─ agentping wait ─▶ daemon-e19.sock ▶ hub ┤   then t3_thread_read     ├─▶ relay /mcp
  agent C ─┘   (thin client,     (0600)          │  one worker per thread,     │   (one Mcp-Session-Id
                blocks in read)                  │  shared by all subscribers  │    per machine)
                                                 └─ t3 thread show every N s ──┴─▶ local t3 CLI
 ```
 
-- The first `t3-watch wait` starts `t3-watch daemon` in its own session
+- The first `agentping wait` starts `agentping daemon` in its own session
   (`setsid`), with stdout on `/dev/null`, so the harness never waits on it.
   The daemon listens on `daemon-e<N>.sock` in a 0700 directory
-  (`$T3_WATCH_HOME`, else `$XDG_RUNTIME_DIR/t3-watch`, else
-  `~/.config/t3-watch`), where N is the engine revision. A lock file keeps
+  (`$AGENTPING_HOME`, else `$XDG_RUNTIME_DIR/agentping`, else
+  `~/.config/agentping`), where N is the engine revision. A lock file keeps
   it to one per socket.
-- The engine revision (`t3-watch --version` prints it, with the version and
+- The engine revision (`agentping --version` prints it, with the version and
   the source revision the binary was built from) names the result
   semantics. Builds that report the same package version have shipped with
   different semantics, so the version alone is not enough. A daemon from
   another engine revision is never trusted: by default it listens on another
-  socket and is never reached, and on a shared `T3_WATCH_SOCKET` the client
+  socket and is never reached, and on a shared `AGENTPING_SOCKET` the client
   checks the `accepted` line and refuses with `error.kind =
   "incompatible_daemon"` (exit 2), dropping the connection so that daemon's
   wait ends too. The client also requires every capability it depends on
@@ -36,7 +36,7 @@
   too. The daemon likewise refuses a request from another revision
   (`incompatible_client`). An old daemon idles out on its own once its
   clients and its own outbox are done; stop it sooner with its own binary's
-  `t3-watch stop`. Engine 19 (this build) does not reach engine-18 daemons
+  `agentping stop`. Engine 19 (this build) does not reach engine-18 daemons
   (`0.16.0`, socket `daemon-e18.sock`), engine-17 ones (`0.15.0`,
   `daemon-e17.sock`), engine-16 ones (`0.14.0`,
   `daemon-e16.sock`), engine-15 ones (`0.13.0`,
@@ -71,11 +71,11 @@
   a blocked long-poll), the server gets MCP `notifications/cancelled` for the
   request, and a local `t3 thread show` has its process group killed.
 - Every live upstream operation holds a slot in one global budget of
-  `T3_WATCH_MAX_WATCHES` (default 1024) until it has actually ended, so
-  cancelled calls cannot pile up past it. `t3-watch status` reports
+  `AGENTPING_MAX_WATCHES` (default 1024) until it has actually ended, so
+  cancelled calls cannot pile up past it. `agentping status` reports
   `upstreamOps.live`, `max` and `cancelled`.
 - The daemon serves at most 512 waiting clients and 1024 watches
-  (`T3_WATCH_MAX_CONNECTIONS`, `T3_WATCH_MAX_WATCHES`); past that, a wait
+  (`AGENTPING_MAX_CONNECTIONS`, `AGENTPING_MAX_WATCHES`); past that, a wait
   fails with `error.kind = "limit"`. `status` and `stop` do not count against
   the limit, so a full daemon can still be inspected and stopped. Requests and replies are single
   newline-terminated lines with size limits and I/O timeouts.
@@ -95,7 +95,7 @@
   on the same pairing. Each poll cycle uses its own connection, so it can be
   cancelled on its own.
 - Requests the server sends inside an SSE response are answered: `ping` with
-  an empty result, anything else with "method not found" (t3-watch declares
+  an empty result, anything else with "method not found" (agentping declares
   no client capabilities), at most 16 per response.
 - The origin must be `https://` (plain `http://` only on loopback), so a
   bearer token never crosses a network in clear text.
@@ -126,7 +126,7 @@
   internal errors, and tool errors other than not-found, permission and
   validation errors are retried with exponential backoff and jitter (0.5 to
   1 s at first, capped at 30 s). They never wake the caller as completed;
-  the result and `t3-watch status` show the outage (`upstream`).
+  the result and `agentping status` show the outage (`upstream`).
   A 504 or 524 shortens that watch's long-poll to 90 s, so it finishes before
   Cloudflare's idle limit.
 - A 404 or 400 on a known session re-runs `initialize` once and retries. If
@@ -135,7 +135,7 @@
   `WWW-Authenticate: Bearer` challenge (RFC 6750) or an `invalid_token`,
   `insufficient_scope` or `invalid_mcp_credential` error in the body, which
   is what the T3 relay sends.
-- On such a 401, t3-watch rereads machines.json once (another `auth login` or
+- On such a 401, agentping rereads machines.json once (another `auth login` or
   another process's refresh may have replaced the token) and, if the server
   issued a refresh token, refreshes it under the config lock and saves the
   result. The outcome is typed:
@@ -160,7 +160,7 @@ cancelled and started again at once, since its connection is usually dead
 and its own timeout would hold back a completion that happened during the
 sleep; so is any call past its budget (the slice plus 60 s). A completion
 during a sleep is therefore seen within one fresh cycle after the resume.
-Each restart is traced as `watch.restart`, and `t3-watch status` counts
+Each restart is traced as `watch.restart`, and `agentping status` counts
 them per watch.
 
 An answer is checked against the suspend before it is used, not only while

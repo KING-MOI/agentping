@@ -6,7 +6,7 @@
   happens under `config.lock`, rereads the file inside the lock, and is
   written through a fresh `O_EXCL` temp file that is fsynced, renamed and
   followed by an fsync of the directory.
-- t3-watch only requests `orchestration:read` and refuses servers whose
+- agentping only requests `orchestration:read` and refuses servers whose
   metadata lists scopes without it. Whatever a server grants, the MCP client
   refuses any tool call other than `t3_thread_wait`, `t3_thread_read` and
   `t3_pending_request` with `action` `list` or `read`; it cannot answer a
@@ -36,7 +36,7 @@
 - The daemon socket is 0600 inside a 0700 directory, and the daemon runs with
   umask 077 so the socket is never briefly open to others. Clients refuse a
   socket or directory that is not theirs or is open to group or others, even
-  with `T3_WATCH_SOCKET`; a directory you choose must already be private and
+  with `AGENTPING_SOCKET`; a directory you choose must already be private and
   is never chmodded. Lock files are opened with `O_NOFOLLOW`, and anything
   that is not a socket at the socket path is left alone. Both ends check the
   other's uid (`getpeereid` on macOS, `SO_PEERCRED` on Linux).

@@ -28,7 +28,7 @@ binary, or wired to a production bot.
 An exit code, or an HTTP 200 from a loopback receiver, is never counted as
 a bot's continuation. In the Codex runs, approvals in the disposable
 threads are declined by the probe's owner client (standing in for the
-person who owns the thread). t3-watch answers none.
+person who owns the thread). agentping answers none.
 
 Times are UTC on 2026-11-09. The build host is the maintainer's Mac mini:
 macOS 27.0.1, arm64, rustc 1.99.1, zig 0.17.0, codex-cli 0.166.0, Claude
@@ -38,8 +38,8 @@ Code 2.1.319.
 
 The app-server keeps no record of past requests; Codex's documented
 `PermissionRequest` hook runs for every approval request, whatever is
-connected. `t3-watch hook codex` is that hook, installed by the user as an
-async hook (`--print-settings` prints the block; t3-watch never edits
+connected. `agentping hook codex` is that hook, installed by the user as an
+async hook (`--print-settings` prints the block; agentping never edits
 Codex's settings) and trusted in `/hooks` or Settings > Hooks. It appends
 the time, turn id and tool name of each request to
 `<state>/native/codex/<session>.requests.jsonl`, never the command or its
@@ -60,7 +60,7 @@ becomes a needs-input wake: its owner answered it. `hooks/list`
 | P3: a record written more than 60 s after its live count was taken as a new request (a spurious `requests_recovered`, or an extra wake) | `78d3d74`: no time limit on matching. A count waits for its record until a request counted after it has had its record for 15 s (Codex starts a session's background hooks in order and stops each after the printed 10 s timeout), or the turn ends | `a_hook_record_that_lands_long_after_its_count_is_still_that_request` (a record two minutes late), and unit tests `a_record_that_lands_late_still_matches_its_count`, `a_count_with_no_record_is_given_up_once_a_later_record_has_settled`, `records_match_newest_first_and_never_a_count_made_after_them` |
 | P3: `open_log` left an existing log's wider mode | `78d3d74`: an existing regular file it owns is set back to 0600, as `open_lock_file` does | `util::tests::an_existing_log_with_wider_access_is_made_private`; the hook test makes a 0644 log 0600 again |
 
-## Commits since the 0.16.0 matrix (`e32c09b`, branch `feat/t3-watch-v1`, unpushed)
+## Commits since the 0.16.0 matrix (`e32c09b`, branch `feat/agentping-v1`, unpushed)
 
 | Commit | What |
 |---|---|
@@ -76,7 +76,7 @@ added the hook log; review ordinal 21 approved them.
 
 They live in the worktree's ignored `dist/0.16.1/`, with the logs in
 `dist/0.16.1/evidence/`. All are built from an exact `git archive` of
-`13fd055`, and `--version` prints `t3-watch 0.16.1 (engine 19, rev
+`13fd055`, and `--version` prints `agentping 0.16.1 (engine 19, rev
 13fd055668daff0e984109a159bc59a7c5620d05)`.
 
 They are built with
@@ -88,11 +88,11 @@ synthetic test strings `/Users/a` and `/Users/someone`, and no
 
 | File | SHA-256 | Executed |
 |---|---|---|
-| `t3-watch-13fd055-aarch64-apple-darwin` (2,003,248 bytes) | `0a039a14bd3629da12aa53d96f5d646b895a3d25289f9fd771b0bfbdd40231aa` | Every real run below |
-| `t3-watch-13fd055-universal-apple-darwin` (arm64 + x86_64) | `353684293301d0bf93024031d80acb75865834b51770f323989c09e0bd55ae84` | Not run; x86_64 is not run here (no Rosetta) |
-| `t3-watch-0.16.1-x86_64-unknown-linux-gnu.tar.gz` | `60b85c7c3392eace8e74a7f5e3b2ff6c261dc6a99f221177bc97cca207f59cf2` (binary `8c3494ed…068d`, glibc 2.17 or older) | **Not yet run on Linux** (T7, the parent's box) |
-| `t3-watch-0.16.1-aarch64-unknown-linux-gnu.tar.gz` | `0ad4b329ef4074cea523bc5708014bc69c2c1fdd5f6cedd3cd39be876815e620` (binary `1331e938…c8ec`, glibc 2.17 or older) | Not run: no aarch64 Linux host |
-| `t3-watch-tests-0.16.1-x86_64-unknown-linux-gnu.tar.gz` | `e3fdacf1a5f232d42f53bb596486fcb4fbaedb7d8d56964662c0a295c8fb86cd` (12 test binaries, LTO off, plus the source) | **Not yet run on Linux** (T7) |
+| `agentping-13fd055-aarch64-apple-darwin` (2,003,248 bytes) | `0a039a14bd3629da12aa53d96f5d646b895a3d25289f9fd771b0bfbdd40231aa` | Every real run below |
+| `agentping-13fd055-universal-apple-darwin` (arm64 + x86_64) | `353684293301d0bf93024031d80acb75865834b51770f323989c09e0bd55ae84` | Not run; x86_64 is not run here (no Rosetta) |
+| `agentping-0.16.1-x86_64-unknown-linux-gnu.tar.gz` | `60b85c7c3392eace8e74a7f5e3b2ff6c261dc6a99f221177bc97cca207f59cf2` (binary `8c3494ed…068d`, glibc 2.17 or older) | **Not yet run on Linux** (T7, the parent's box) |
+| `agentping-0.16.1-aarch64-unknown-linux-gnu.tar.gz` | `0ad4b329ef4074cea523bc5708014bc69c2c1fdd5f6cedd3cd39be876815e620` (binary `1331e938…c8ec`, glibc 2.17 or older) | Not run: no aarch64 Linux host |
+| `agentping-tests-0.16.1-x86_64-unknown-linux-gnu.tar.gz` | `e3fdacf1a5f232d42f53bb596486fcb4fbaedb7d8d56964662c0a295c8fb86cd` (12 test binaries, LTO off, plus the source) | **Not yet run on Linux** (T7) |
 | `linux.sh`, `desktop-check.sh` | copies of `e2e/acceptance/linux.sh` (`1dbe6485…5293`) and `e2e/native/codex/desktop-check.sh` (`c95b18ad…25ec`), both unchanged since 0.16.0 | |
 
 ## Build checks at `13fd055`
@@ -116,14 +116,14 @@ pending for it.
 
 | # | Gate | Kind | Status | Evidence |
 |---|---|---|---|---|
-| T1 | The correct bot woken by a real completion webhook, and continuing | real, production | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-reported) | 0.15.0: watchId `1650566df28c0743`, notificationId `5c5f52008d347700b6f8ebeec62f4206`, `/workspace/t3-watch-gates-1e98e73-03cb7361cb9947b7/FINAL-evidence.json` and `T1-RECEIVED.json` |
+| T1 | The correct bot woken by a real completion webhook, and continuing | real, production | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-reported) | 0.15.0: watchId `1650566df28c0743`, notificationId `5c5f52008d347700b6f8ebeec62f4206`, `/workspace/agentping-gates-1e98e73-03cb7361cb9947b7/FINAL-evidence.json` and `T1-RECEIVED.json` |
 | T2 | A real `needs_input` notification, and the parent's continuation | real, production | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-reported) | 0.15.0: watchId `9aa64e5f7e064c90`, `T2.RESULT`, same evidence directory |
 | T3 | Durable delivery through a controlled outage and a daemon restart | real, isolated | **PASS** | `e2e/durable.sh`. With the receiver down, the client exited 4 with the event queued. After a daemon stop and restart, the receiver came up and the event was delivered on attempt 5 with the same id (`21cf1b47…`), 2.0 s later. `evidence/durable-13fd055.txt` |
 | T3b | Durable replay to the **real** receiver, and the bot continuing | real, production | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-reported) | 0.15.0: replay id `0903158322f9d1610fd19123acd696dd`, attempt 5; `T3b-clean-real-receiver-receipt-09031583.json` |
 | T4 | Crash recovery: SIGKILL of the daemon mid-delivery | real, isolated | **PASS** | Same run: delivered on attempt 4 with the same id (`8b49ac51…`), 1.8 s after the receiver answered again. Delivery is at least once |
 | T5 | A real host suspend and resume | real | **PASS** (parent-reported for 0.15.0, carried: the suspend path is unchanged); evidence not recorded here | Review ordinal 21 reports a real-suspend pass for 0.15.0. Its evidence (ids, path) has not reached this worktree and is not recorded here; the 0.15.0 and 0.16.0 matrices listed T5 as pending. Since `1e98e73`, `src/daemon.rs`, `tests/suspend.rs` and `e2e/acceptance/suspend.sh` are unchanged and the wait clock only gained a field (`started_ms`); `tests/suspend.rs` (8 tests) passes here. Never simulated in its place |
 | T6 | Live local T3, read only | real | **PASS** | 06:39:19: a completed fixture thread, directly (328 ms, watchId `f02040dab42053e6`) and through the daemon (307 ms, `d29faae795fe7a76`); `--until workstream` on local exits 2. `evidence/live-local-13fd055.txt` |
-| T7 | Native Linux run of the latest archives and tests | real | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-reported) | `sh dist/0.16.1/linux.sh dist/0.16.1 13fd055` on the Grok Bot box. 0.15.0: `linux-run.log` in `/workspace/t3-watch-candidate-1e98e73`, 286 tests and `e2e/durable.sh` A and B |
+| T7 | Native Linux run of the latest archives and tests | real | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-reported) | `sh dist/0.16.1/linux.sh dist/0.16.1 13fd055` on the Grok Bot box. 0.15.0: `linux-run.log` in `/workspace/agentping-candidate-1e98e73`, 286 tests and `e2e/durable.sh` A and B |
 | N1 | Claude Code: synthetic hook events | synthetic | **PASS** | `tests/native.rs`, 11 tests |
 | N3 | Claude Code: real interactive permission dialog | real, isolated | **PASS** | Disposable session `f08112c9-44a8-478f-a1ba-51d1c1115097`, 06:39:37. `needs_input` and its webhook arrived (tool `Bash`). The dialog was rejected with Escape and never approved, and the command did not run. Same-session reuse woke a pinned wait 1.6 s after the next prompt; a `--resume` reuse 1.6 s after the resume started. The hook log holds `at`, `event`, `type`, `tool` and `subagent` only. `evidence/claude-interactive-13fd055.txt` |
 | N4 | Claude Code: same-session reuse wakes the bot, which continues | real, production | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-confirmed) | 0.15.0: correlation `cbbacb6e4f0d4d1d`, watchId `24f5cc6a72c561cd`, `RECEIVED-24f5cc6a72c561cd.json` |
@@ -134,7 +134,7 @@ pending for it.
 | X4 | Codex: default socket through the official shared daemon | real, isolated | **PASS** | 06:39:30. Completion, then a pinned run 2 522 ms after `turn/completed`. The daemon was stopped and no LaunchAgent changed. `evidence/codex-daemon-socket-13fd055.txt` |
 | X5 | Codex: the desktop thread on the MacBook, read only | real | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-reported) | `dist/0.16.1/desktop-check.sh` against the research thread. 0.15.0 exited 0 at run ordinal 4 (`x5-desktop-check.out`; the thread's id is withheld from this file) |
 | X6 | Codex: the bot reuses a thread and continues | real, production | **PENDING (parent) for 0.16.1**; PASS for 0.15.0 (parent-confirmed) | 0.15.0: correlation `cbbacb6e4f0d4d1d`, disposable thread `01a1be81-857d-7483-a375-daadd3d77217`, watchId `5a10216c5de0876f`, `RECEIVED-5a10216c5de0876f.json` |
-| X7 | Codex: the hook in the user's own Codex (desktop app or CLI) | real | **PASS** (parent-confirmed, with 0.16.0) | On the user's MacBook: t3-watch 0.16.0 installed at `~/.local/bin/t3-watch`, the `PermissionRequest` async hook block from `--print-settings` added to `~/.codex/config.toml` and trusted by the user, and `desktop-check.sh` reporting `requestRecovery: "hook"` against Codex app-server 0.167.0. The user did the install and trust; t3-watch edited nothing. 0.16.1 keeps the same block and log line. Whether Codex asks for trust again when the binary at that path is replaced was not checked |
+| X7 | Codex: the hook in the user's own Codex (desktop app or CLI) | real | **PASS** (parent-confirmed, with 0.16.0) | On the user's MacBook: agentping 0.16.0 installed at `~/.local/bin/agentping`, the `PermissionRequest` async hook block from `--print-settings` added to `~/.codex/config.toml` and trusted by the user, and `desktop-check.sh` reporting `requestRecovery: "hook"` against Codex app-server 0.167.0. The user did the install and trust; agentping edited nothing. 0.16.1 keeps the same block and log line. Whether Codex asks for trust again when the binary at that path is replaced was not checked |
 
 **X3b limits** (also in `docs/native-sessions.md`, "Limits"):
 
@@ -197,7 +197,7 @@ read from the box's evidence bundle.
 an engine-16 daemon would do for a new client.
 
 **0.15.0 on the same box: PASS** (parent-reported). `linux-run.log` in
-`/workspace/t3-watch-candidate-1e98e73` covers the 286 tests and
+`/workspace/agentping-candidate-1e98e73` covers the 286 tests and
 `e2e/durable.sh` scenarios A and B.
 
 The Linux-specific branches of the new tests (the retried and refused
@@ -206,14 +206,14 @@ takes.
 
 ## Publish-ready history
 
-`feat/t3-watch-v1` is left as it is. A separate local branch,
-`publish/t3-watch-scrubbed`, holds the same history with private details
+`feat/agentping-v1` is left as it is. A separate local branch,
+`publish/agentping-scrubbed`, holds the same history with private details
 removed from every commit message and every commit's files: the MacBook's
 hostname, an account name, the research project's path, the build host's
 name, a real thread id and environment id, a home path, and a person's
 name in one doc. That includes the messages of `4dca907` and `17f71fb`.
 The `LICENSE-MIT` copyright line and the commit authors are kept. Its
-tip's tree is identical to `feat/t3-watch-v1`'s. It is not pushed.
+tip's tree is identical to `feat/agentping-v1`'s. It is not pushed.
 
 ## Scope notes: what ran on this host and what ran elsewhere
 
@@ -221,7 +221,7 @@ tip's tree is identical to `feat/t3-watch-v1`'s. It is not pushed.
   `council` skill's default panel includes the review provider that must
   not be retried, so neither was run.
 - **The runtime on this host** (names only, no contents read): the T3
-  server runs always on. There is no t3-watch install, saved pairing,
+  server runs always on. There is no agentping install, saved pairing,
   webhook receiver or bot routine. So T1, T2, T3b and X6 were not run on
   this host. The parent ran them for 0.15.0 against its own receiver and
   bot routine, where the webhook URL and secret are; T7 and X5 ran on the

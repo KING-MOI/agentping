@@ -1,10 +1,10 @@
 # Native sessions: Codex and Claude Code (experimental)
 
-t3-watch was built to watch T3 threads. This document covers two more kinds
+agentping was built to watch T3 threads. This document covers two more kinds
 of target: existing native **Codex** threads (desktop app or CLI) and
 existing native **Claude Code** sessions. The goal is the same as for T3:
 a bot that manages or reuses one of these sessions gets a deterministic
-wake (webhook, durable outbox, correct `X-T3-Watch-*` routing headers) when
+wake (webhook, durable outbox, correct `X-AgentPing-*` routing headers) when
 a turn completes or the session needs input, and no AI model has to poll
 anything.
 
@@ -25,7 +25,7 @@ adapter is "supported" until its acceptance checks below have passed.
 - **Watch only.** Never send a prompt or start a turn, never steer,
   interrupt, resume with overrides, fork, archive, rename or delete
   anything, and never change a session's settings.
-- **Approval ownership stays where it is.** t3-watch never answers an
+- **Approval ownership stays where it is.** agentping never answers an
   approval, permission, elicitation or user-input request. It reports that
   one is pending, so the owning human or client answers it.
 - **Official interfaces only.** Claude Code: documented hooks (and, if ever
@@ -38,7 +38,7 @@ adapter is "supported" until its acceptance checks below have passed.
   interfaces with synthetic sessions in temporary homes. Real user
   sessions are read-only targets, never edit fixtures.
 - **A remote shell alone is not a wake.** A shell on the session's machine
-  can run t3-watch, but the bot is woken by t3-watch's webhook, with the
+  can run agentping, but the bot is woken by agentping's webhook, with the
   same durable outbox, ids and signatures as for T3.
 
 ### The concrete Codex target
@@ -61,7 +61,7 @@ a JSON object on stdin (`session_id`, `hook_event_name`, `transcript_path`,
 hook (`"async": true`) runs in the background and cannot block or change
 the session.
 
-`t3-watch hook claude-code` is that hook. It reads the JSON and appends one
+`agentping hook claude-code` is that hook. It reads the JSON and appends one
 line to `<state>/native/claude-code/<session_id>.jsonl` (0600, fsynced). The
 line holds only the time, the event name, its type (`notification_type`,
 `source` or `reason`) and the tool's name (`Bash`, `mcp__server__tool`, so a
@@ -70,7 +70,7 @@ path. The
 hook always exits 0 and prints nothing, whatever the input. It never
 returns a decision.
 
-`t3-watch wait claude-code:<session_id>` watches that log through the same
+`agentping wait claude-code:<session_id>` watches that log through the same
 engine as T3 targets. That means the same daemon sharing, the same `--timeout`
 rules (suspended time counts), needs-input, `--notify-on`, webhooks,
 `--durable` and the trace all apply. The log is a local file, so watching it
@@ -91,8 +91,8 @@ costs a file read every half second and no model calls.
 | A permission dialog rejected with Escape | No hook runs (Claude Code 2.1.319: neither `PermissionDenied` nor `Stop`), so the request stays open until the next `UserPromptSubmit` or `SessionEnd` |
 | `SessionStart`, anything else | No change |
 
-Install the hook yourself; t3-watch never edits Claude Code settings.
-`t3-watch hook claude-code --print-settings` prints the `hooks` block to
+Install the hook yourself; agentping never edits Claude Code settings.
+`agentping hook claude-code --print-settings` prints the `hooks` block to
 merge into `~/.claude/settings.json` or a project's `.claude/settings.json`.
 
 Tool events (`PostToolUse`, `PostToolUseFailure`) do not clear a pending
@@ -140,7 +140,7 @@ Escape, which leaves the request open until the bot's next prompt.
    --strict-mcp-config --no-session-persistence --session-id <uuid>`, so
    neither the user's settings nor their hooks were loaded. It fired
    `SessionStart`, `UserPromptSubmit`, `Stop` and `SessionEnd` through
-   the async hook. A `t3-watch wait` registered before the prompt (through
+   the async hook. An `agentping wait` registered before the prompt (through
    the daemon, `--durable`) reported `completed` for run 1, and its
    webhook delivered `settled` for `claude-code:<uuid>` about 4.5 s after
    the prompt started. Side effect: Claude Code created an empty project
@@ -179,13 +179,13 @@ Checks 3 and 4 are reproduced by `e2e/native/claude_interactive.py`; see
 
 ### How it works
 
-`t3-watch wait codex://threads/<id>` reads the thread from a Codex
+`agentping wait codex://threads/<id>` reads the thread from a Codex
 app-server through its documented JSON-RPC protocol. It uses the
 WebSocket-over-Unix-socket transport, the one `codex app-server --listen
 unix://PATH` and the shared daemon's control socket serve. `codex
-app-server proxy` only relays stdio bytes to that same socket, so t3-watch
+app-server proxy` only relays stdio bytes to that same socket, so agentping
 connects to the socket itself and starts no extra process. The socket is
-`$T3_WATCH_CODEX_SOCKET`, else
+`$AGENTPING_CODEX_SOCKET`, else
 `$CODEX_HOME/app-server-control/app-server-control.sock` (`CODEX_HOME`
 defaults to `~/.codex`). The client resolves it and sends it with the wait,
 so the daemon reads the socket the caller meant.
@@ -202,11 +202,11 @@ poll), it sends:
 
 Once per connection, then once a minute, it also sends `hooks/list {cwds:
 [the thread's cwd]}`, which lists the configured hooks and their trust
-state, to learn whether the user installed `t3-watch hook codex` (see
+state, to learn whether the user installed `agentping hook codex` (see
 "Requests missed while nothing counts"). An app-server without
 `hooks/list` answers an error, read as "not installed".
 
-The connection's `initialize` names the client `t3-watch`. Those four
+The connection's `initialize` names the client `agentping`. Those four
 methods are all it sends. It also keeps the `thread/status/changed`
 notifications the app-server sends every initialized connection, for every
 thread and without any subscription (checked with codex-cli 0.166.0: a
@@ -266,28 +266,28 @@ The next wait on that thread takes the same connection: one that arrives
 while the daemon is reading kept connections waits for that round (about
 50 ms per connection) instead of opening another one. If a second
 connection to the thread does get kept, the one holding the counter stays.
-The daemon stays up meanwhile, and `t3-watch status` shows such
+The daemon stays up meanwhile, and `agentping status` shows such
 connections as `codexKept`.
 
 **Requests missed while nothing counts: the hook log.** The app-server
 keeps no record of past requests, so a request that opens and closes while
 no connection counts (no wait and no daemon keeping one) leaves no trace
 there. Codex's documented `PermissionRequest` hook runs "when Codex is
-about to ask for approval", whatever is connected, and t3-watch can be
+about to ask for approval", whatever is connected, and agentping can be
 that hook:
 
 ```
-t3-watch hook codex --print-settings >> ~/.codex/config.toml   # or paste it
+agentping hook codex --print-settings >> ~/.codex/config.toml   # or paste it
 ```
 
-prints a block for `~/.codex/config.toml` (t3-watch never edits Codex's
+prints a block for `~/.codex/config.toml` (agentping never edits Codex's
 settings itself):
 
 ```toml
 [[hooks.PermissionRequest]]
 [[hooks.PermissionRequest.hooks]]
 type = "command"
-command = "/path/to/t3-watch hook codex --home /path/to/state"
+command = "/path/to/agentping hook codex --home /path/to/state"
 timeout = 10
 async = true
 ```
@@ -295,7 +295,7 @@ async = true
 Codex runs a new hook only after the user reviews and trusts it (`/hooks`
 in the CLI, Settings > Hooks in the desktop app); trust is tied to the
 hook's hash, so a changed block needs trusting again. `--home` names the
-state directory (`$T3_WATCH_HOME` or the default, made absolute when the
+state directory (`$AGENTPING_HOME` or the default, made absolute when the
 block is printed), so the hook records where the waits read even when
 Codex runs without the shell's environment. As an async hook it "can't
 block, approve, rewrite, or otherwise control the operation" (Codex's
@@ -343,7 +343,7 @@ ever will. A record no live count matches opened while nothing counted:
   answered it, so it is never a needs-input wake.
 
 Every Codex result says which applies: `requestRecovery: "hook"` when
-`hooks/list` lists `t3-watch hook codex` for this state directory,
+`hooks/list` lists `agentping hook codex` for this state directory,
 enabled and trusted (or managed), and `"none"` otherwise.
 
 The run ordinal is the turn count. A bot that reuses a thread reads the
@@ -370,18 +370,18 @@ the questions that gated the implementation:
    changed no file, but it made the second client a recipient of the
    owner's pending approval request (`item/commandExecution/requestApproval`)
    and of the thread's notifications. A watcher that resumed could answer
-   for the owner, so t3-watch never resumes.
+   for the owner, so agentping never resumes.
 4. **Approval routing.** Without a resume, only the owner received the
-   request. While t3-watch held a needs-input wait (acknowledged, still
+   request. While agentping held a needs-input wait (acknowledged, still
    polling), the owner's request stayed open: no `serverRequest/resolved`
    until the owner declined it.
 5. **Unload.** With the owner gone, the thread unloaded after 60 s while
-   t3-watch polled it once a second. Reading an unloaded thread did not load
+   agentping polled it once a second. Reading an unloaded thread did not load
    it, took no writer lock and left its rollout file unchanged.
 6. **Gaps.** Polling reads the persisted turns, so a turn that ended while
-   t3-watch was disconnected or not running is reported by the next read.
-   t3-watch read the unloaded thread as completed run 2.
-7. **No changes.** Over the same 8 s with and without t3-watch polling, the
+   agentping was disconnected or not running is reported by the next read.
+   agentping read the unloaded thread as completed run 2.
+7. **No changes.** Over the same 8 s with and without agentping polling, the
    only files that changed in `CODEX_HOME` were the app-server's own log
    database (`logs_2.sqlite-wal`, `-shm`), in both windows. No session,
    rollout, state or lock file changed.
@@ -423,7 +423,7 @@ the questions that gated the implementation:
   Turn events (`turn/completed`) reach only subscribers, which needs
   `thread/resume`, ruled out by point 3.
 - **Requests that open and close while nothing counts are recovered only
-  with the hook.** Without `t3-watch hook codex` installed and trusted
+  with the hook.** Without `agentping hook codex` installed and trusted
   (`requestRecovery: "none"`), one that is opened and answered while no
   counting connection is open (`--no-daemon` between waits, a stopped
   daemon, a dropped connection, more than 15 minutes after the last wait)
@@ -465,7 +465,7 @@ the questions that gated the implementation:
 - Recovered requests take the next free number when they are found, so
   numbers follow discovery, not opening order; `openedAt` gives the order.
 - The log grows by about 110 bytes per approval request and is not
-  pruned. Opening it (like every t3-watch log) sets it back to 0600 if
+  pruned. Opening it (like every agentping log) sets it back to 0600 if
   its mode was widened.
 - A request still open when a connection takes the count over is
   reported, without the hook possibly as an extra wake for one already
@@ -516,17 +516,17 @@ The target stays read-only (see "The concrete Codex target"). Checking it
 needs, under the parent's control:
 
 - On that MacBook, as its user, with the desktop app open on the thread:
-  `sh e2e/native/codex/desktop-check.sh <t3-watch> <thread id>`. It shows
+  `sh e2e/native/codex/desktop-check.sh <agentping> <thread id>`. It shows
   `codex --version`, whether
   `~/.codex/app-server-control/app-server-control.sock` exists, and runs
-  `t3-watch wait --no-daemon --timeout 5s codex://threads/<thread id>`,
+  `agentping wait --no-daemon --timeout 5s codex://threads/<thread id>`,
   which sends `initialize`, `thread/read`, `thread/turns/list` and
   `hooks/list` only. If
   no socket exists, the desktop app runs its threads in a private
   app-server. Starting `codex app-server daemon` would then be a change
   on that machine that needs the user's approval, and it would see only
   persisted turns (see "Limits").
-- A t3-watch build for that Mac's architecture, installed for that user.
+- An agentping build for that Mac's architecture, installed for that user.
 - The bot's webhook URL and secret available there, with the receiver
   reachable from that machine.
 - Approval to keep a watcher running there while the thread is in use.

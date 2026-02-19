@@ -13,7 +13,7 @@ On a disk-constrained machine, a minimal toolchain is enough:
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
   sh -s -- -y --profile minimal --default-toolchain stable --no-modify-path
-~/.cargo/bin/cargo build --release   # target/release/t3-watch
+~/.cargo/bin/cargo build --release   # target/release/agentping
 ```
 
 ## Tests
@@ -93,7 +93,7 @@ the real daemon, and is read-only on T3:
 
 ```sh
 cargo build --release
-e2e/live.sh <settled-thread-id> <running-thread-id> target/release/t3-watch [relay-origin]
+e2e/live.sh <settled-thread-id> <running-thread-id> target/release/agentping [relay-origin]
 ```
 
 It checks a real completion, a stale run ordinal and `--after-run`, the

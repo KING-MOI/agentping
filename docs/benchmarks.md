@@ -3,15 +3,15 @@
 All numbers below are from one run on the maintainer's Mac mini, recorded in the raw
 results file. Nothing is estimated. The Python baseline is
 [`bench/baseline_python_watcher.py`](../bench/baseline_python_watcher.py), the
-polling watcher t3-watch replaces, copied unchanged.
+polling watcher agentping replaces, copied unchanged.
 
 What they show:
 
 - Twenty agents watching the same local thread cost 9 `t3 thread show` calls
-  and 3.89 CPU-seconds per minute through t3-watch, against 160 calls and
+  and 3.89 CPU-seconds per minute through agentping, against 160 calls and
   107.32 CPU-seconds for twenty copies of the Python polling watcher. That is
   about 28 times less CPU. The CPU goes to T3's own CLI (about 0.4 s per call);
-  the twenty blocked t3-watch clients use none that `/usr/bin/time` can see.
+  the twenty blocked agentping clients use none that `/usr/bin/time` can see.
 - With a single watcher both tools make about one call per interval, so their
   CPU is about the same. The gain comes from the daemon sharing one poller.
 - The 9th call in the twenty-client run comes from the burst of clients
@@ -22,7 +22,7 @@ What they show:
   twenty Python watchers. A blocked client is 2.4 MiB RSS by `ps`, which is
   above the 1 to 2 MB goal. Its private footprint is 1.27 MiB, and a process
   that only sleeps (`/bin/sleep`) already shows 1.1 MiB RSS on this machine.
-- `t3-watch --version` starts in 1.68 ms median, 0.56 ms above the cost of
+- `agentping --version` starts in 1.68 ms median, 0.56 ms above the cost of
   running `/usr/bin/true` from the same loop.
 
 The remote (MCP) path was not benchmarked against a live relay because that
@@ -40,7 +40,7 @@ Raw results: [`bench/results/mac-mini-2026-11-06.json`](../bench/results/mac-min
 | | Result |
 | --- | --- |
 | Release binary (`opt-level = "z"`, LTO, stripped) | 1,687,264 bytes (1.61 MiB) |
-| `t3-watch --version`, median of 300 runs | 1.68 ms (floor: `/usr/bin/true` 1.12 ms) |
+| `agentping --version`, median of 300 runs | 1.68 ms (floor: `/usr/bin/true` 1.12 ms) |
 | `python3 -c pass`, median of 100 runs | 8.25 ms |
 | Python watcher `--help`, median of 100 runs | 16.85 ms |
 | `wait` on a settled thread via the warm daemon, stub `t3` (`sh`), median of 100 | 3.40 ms |
@@ -58,8 +58,8 @@ Startup times are wall clock from a Python `subprocess.run` loop, so they includ
 | Process | Max RSS (median of 20) | Peak footprint (median of 20) |
 | --- | --- | --- |
 | `/usr/bin/true` (floor) | 1.06 MiB | 1.08 MiB |
-| `t3-watch --version` | 2.02 MiB | 1.27 MiB |
-| `t3-watch wait` client, settled thread | 2.38 MiB | 1.27 MiB |
+| `agentping --version` | 2.02 MiB | 1.27 MiB |
+| `agentping wait` client, settled thread | 2.38 MiB | 1.27 MiB |
 | `python3 -c pass` | 7.75 MiB | 4.70 MiB |
 
 A process blocked in `sleep` has 1.1 MiB RSS for `/bin/sleep` and 7.8 MiB for `python3 -c 'time.sleep(30)'`.
@@ -70,12 +70,12 @@ Both tools poll the local `t3` CLI every 8 s (the Python watcher's default) and 
 
 | Watchers | Tool | `t3 thread show` calls | CPU time | Total RSS | RSS per waiting process |
 | --- | --- | --- | --- | --- | --- |
-| 1 | t3-watch (clients + daemon) | 8 | 3.53 s | 5.3 MiB | client 2.4 MiB, daemon 2.9 MiB |
+| 1 | agentping (clients + daemon) | 8 | 3.53 s | 5.3 MiB | client 2.4 MiB, daemon 2.9 MiB |
 | 1 | Python watcher | 9 | 4.02 s | 11.7 MiB | 11.7 MiB |
-| 20 | t3-watch (clients + daemon) | 9 | 3.89 s | 52.2 MiB | client 2.4 MiB, daemon 3.9 MiB |
+| 20 | agentping (clients + daemon) | 9 | 3.89 s | 52.2 MiB | client 2.4 MiB, daemon 3.9 MiB |
 | 20 | Python watcher | 160 | 107.32 s | 166.8 MiB | 8.3 MiB |
 
-Each of the 20 t3-watch clients reported 0.00 s of CPU for the whole window, which is below the 10 ms resolution of `/usr/bin/time`. All of t3-watch's CPU time is the daemon and the `t3` processes it ran. The watched thread was still `running` at the end, and every watcher timed out rather than settling, so both tools did the same job.
+Each of the 20 agentping clients reported 0.00 s of CPU for the whole window, which is below the 10 ms resolution of `/usr/bin/time`. All of agentping's CPU time is the daemon and the `t3` processes it ran. The watched thread was still `running` at the end, and every watcher timed out rather than settling, so both tools did the same job.
 
 ## Checked against the live T3 server on the maintainer's Mac mini (completion-contract build)
 
@@ -117,7 +117,7 @@ plan against paired machines and real bots.
   `orchestration:read` available.
 - Strict discovery (resource and issuer match, PKCE S256, https endpoints)
   accepts both the real relay and the local server. The relay lists no
-  `refresh_token` grant, so t3-watch registers for `authorization_code` only.
+  `refresh_token` grant, so agentping registers for `authorization_code` only.
 - MCP with an invalid token against the relay through Cloudflare: exit 2 with
   `error.kind = "auth"` in 0.3 s, including one reread of machines.json. A
   relay thread URL picked the saved machine by its origin.

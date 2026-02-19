@@ -1,8 +1,8 @@
 # Live integration plan
 
-Exact, read-only steps for running t3-watch against real T3 servers and a
+Exact, read-only steps for running agentping against real T3 servers and a
 real bot. Pairing approval and the bot wake are done by whoever holds those
-credentials; t3-watch's exit code and a webhook's 2xx prove delivery to the
+credentials; agentping's exit code and a webhook's 2xx prove delivery to the
 receiver, not that a bot acted on it. Nothing here sends a message to a
 thread, answers a question or approves anything: the watcher's MCP client
 refuses every tool except `t3_thread_wait`, `t3_thread_read` and
@@ -10,28 +10,28 @@ refuses every tool except `t3_thread_wait`, `t3_thread_read` and
 
 ## 0. Binary
 
-macOS: `cargo build --release --locked` gives `target/release/t3-watch`.
+macOS: `cargo build --release --locked` gives `target/release/agentping`.
 Linux: unpack the candidate archive and check its digest:
 
 ```sh
-shasum -a 256 -c t3-watch-<ver>-x86_64-unknown-linux-gnu.tar.gz.sha256
-tar -xzf t3-watch-<ver>-x86_64-unknown-linux-gnu.tar.gz
-./t3-watch-<ver>-x86_64-unknown-linux-gnu/t3-watch --version
+shasum -a 256 -c agentping-<ver>-x86_64-unknown-linux-gnu.tar.gz.sha256
+tar -xzf agentping-<ver>-x86_64-unknown-linux-gnu.tar.gz
+./agentping-<ver>-x86_64-unknown-linux-gnu/agentping --version
 ```
 
-`t3-watch --version` prints the version, the engine revision and the
-source revision, e.g. `t3-watch 0.16.1 (engine 19, rev 1a2b3c...)`; packaged
+`agentping --version` prints the version, the engine revision and the
+source revision, e.g. `agentping 0.16.1 (engine 19, rev 1a2b3c...)`; packaged
 binaries always carry the commit they were built from.
 
 Upgrading over a running older build (`a92f977` or `fa10d88`, engine 4;
 `ac91a64` and other `0.3.0` builds, engine 5; `0.4.0` to `0.10.0`, engines
 6 to 12): this build never talks to their daemons (sockets `daemon-e4.sock`
-to `daemon-e12.sock`, or older; on a shared `T3_WATCH_SOCKET` it refuses
+to `daemon-e12.sock`, or older; on a shared `AGENTPING_SOCKET` it refuses
 them, by engine and by missing capabilities). It keeps its entries in
 `outbox-v4/`, which engine-4 and engine-5 senders never read; `0.4.0` to
 `0.10.0` use the same directory with the same rules. Their daemons keep
 serving their own running clients and idle out afterwards; to retire one
-sooner, run its own binary's `t3-watch stop` once its clients are done.
+sooner, run its own binary's `agentping stop` once its clients are done.
 Entries older builds leave in `outbox-v2/` or `outbox-v3/` are never
 moved: this build's daemon delivers them in place, under their leases and
 sender lock, so a client of theirs that is still running reports its event
@@ -49,7 +49,7 @@ engine-4 client looks. That is what the upgrade precondition is for. **Upgrade p
 this build leaves `outbox-v2/` untouched until you stop every engine-5
 (`0.3.0`) and engine-6 (`0.4.0`) sender (daemons, including any on a
 custom socket, and `outbox run` without a daemon) and then run
-`t3-watch outbox legacy-ack --senders-stopped`. Until then, and whenever
+`agentping outbox legacy-ack --senders-stopped`. Until then, and whenever
 such a daemon answers at a default socket, `outbox run --once` and
 `outbox list` and `status` exit 4 with `upgradePrecondition`. Entries in
 `outbox/` (before engine 4) move over after the 90 s inline grace. The
@@ -69,7 +69,7 @@ the exit code. To locate a late or missing wake, line it up with the run's
 
 ```sh
 e2e/live.sh <completed top-level thread> <thread that stays running ~2 min> \
-  target/release/t3-watch https://<relay-origin>
+  target/release/agentping https://<relay-origin>
 WAITING_THREAD=<thread blocked on input> e2e/live.sh ...   # adds the needs-input check
 ```
 
@@ -83,16 +83,16 @@ going to `hooks.log`, and strict OAuth discovery. Result on the maintainer's Mac
 
 `e2e/receiver.py` is an audit fixture: it answers 200 only to correctly
 signed and authorized requests (401 otherwise) and logs what it saw. A pass
-shows what t3-watch sent; it is not evidence that a production receiver got
+shows what agentping sent; it is not evidence that a production receiver got
 an event or acted on it (step 4).
 
 ## 2. Pair each remote machine (parent, once per machine)
 
 ```sh
-t3-watch auth oauth-start https://prod-05055d8a66f766cb.t3coderelay.com --name mini
+agentping auth oauth-start https://prod-05055d8a66f766cb.t3coderelay.com --name mini
 #   open authorizeUrl, approve as the user, copy the URL of the page that fails to load
-t3-watch auth oauth-finish 'http://127.0.0.1:8976/callback?code=...&state=...'
-t3-watch auth list    # shows the machine, never the token
+agentping auth oauth-finish 'http://127.0.0.1:8976/callback?code=...&state=...'
+agentping auth list    # shows the machine, never the token
 ```
 
 Repeat for the second machine's relay origin with `--name <second machine>`. The token has
@@ -107,7 +107,7 @@ a. A single turn, turn mode (the default). Expect exit 0, `outcome`
    `completed`, and `delegatedWorkPending` true or false:
 
    ```sh
-   t3-watch wait '<relay>/<envId>/<completed thread>' --timeout 2m --pretty
+   agentping wait '<relay>/<envId>/<completed thread>' --timeout 2m --pretty
    ```
 
 b. A thread blocked on input, such as a test thread with two
@@ -116,7 +116,7 @@ b. A thread blocked on input, such as a test thread with two
    `pendingKey`. Do not answer; the user has the card.
 
    ```sh
-   t3-watch wait '<second relay>/<second envId>/mcp%3Alaunch%3A<thread id>' \
+   agentping wait '<second relay>/<second envId>/mcp%3Alaunch%3A<thread id>' \
      --until workstream --timeout 5m --pretty
    ```
 
@@ -129,7 +129,7 @@ c. A delegating thread, whole workstream, with the production notification
 
    ```sh
    export BOT_URL=... BOT_SECRET=... BOT_AUTH='Bearer ...'
-   t3-watch wait '<relay>/<envId>/<thread>' --until workstream --expect-min-run-ordinal <N> \
+   agentping wait '<relay>/<envId>/<thread>' --until workstream --expect-min-run-ordinal <N> \
      --timeout 6h --notify-on all --durable --heartbeat 5m --notify-unreachable 2m \
      --webhook-url-env BOT_URL --webhook-secret-env BOT_SECRET \
      --webhook-header-env Authorization=BOT_AUTH > watch.json; echo "exit $?" >> watch.json
@@ -138,12 +138,12 @@ c. A delegating thread, whole workstream, with the production notification
    Expect, in order at the receiver: heartbeats every 5 minutes, possibly
    `upstream_unreachable`/`upstream_restored` around tunnel trouble, and one
    `settled` event whose `threads[0].resultRunId` is the synthesis run (for
-   the research incident, ordinal 6, not 2). `t3-watch outbox list` should be
+   the research incident, ordinal 6, not 2). `agentping outbox list` should be
    empty at the end; if the receiver was down, the entry is retried by the
    daemon until a 2xx.
 
 d. Outage behavior, observed rather than induced: during a tunnel outage,
-   `t3-watch status` shows each watch's `upstream` (`unreachableSince`,
+   `agentping status` shows each watch's `upstream` (`unreachableSince`,
    `consecutiveFailures`, `lastError`, for example
    `HTTP 401 without a bearer challenge ... Unauthorized: Tunnel not found`
    or `HTTP 530 (Cloudflare 1033 ...)`), and no wait ends as completed until
@@ -154,7 +154,7 @@ d. Outage behavior, observed rather than induced: during a tunnel outage,
 The parent verifies that the bot acted on the `settled` or `needs_input`
 event (for example, a reply in the bot's channel naming the thread), and
 reports that separately from the watcher's exit code. A receiver should
-drop repeats of an `X-T3-Watch-Id` it has handled, order a wait's events by
+drop repeats of an `X-AgentPing-Id` it has handled, order a wait's events by
 `eventSeq`, and a receiver-side monitor should alert when a watch's
 heartbeats stop for about two intervals without a final event.
 
@@ -167,7 +167,7 @@ Status as reported by the parent (not re-verified from this worktree):
 
 | Acceptance | Result |
 | --- | --- |
-| Real webhook from a box daemon to the bot's T3 Watch Wake routine, `settled` | Passed: watchId `c2366ae100a095fb` (Sol review run, ordinal 3), `endedAt` 2026-11-07T06:40:20.657Z, woke the correct bot with no user ping |
+| Real webhook from a box daemon to the bot's AgentPing Wake routine, `settled` | Passed: watchId `c2366ae100a095fb` (Sol review run, ordinal 3), `endedAt` 2026-11-07T06:40:20.657Z, woke the correct bot with no user ping |
 | `needs_input` wake through the same routine | Pending |
 | Replay of a queued event after receiver downtime (`--durable`) | Pending |
 | Native Linux run of the x86_64 / aarch64 archives | Pending |
@@ -176,12 +176,12 @@ Status as reported by the parent (not re-verified from this worktree):
 
 The release gate is the correct bot's receipt and continuation, with
 timestamps, without a user ping, separately for completion, needs-input and
-durable replay. t3-watch can prove what it did; only the bot's own records
+durable replay. agentping can prove what it did; only the bot's own records
 show what happened after. `e2e/timeline.py` joins the two:
 
 ```sh
 # On the watcher host, after the event:
-python3 -I e2e/timeline.py ~/.config/t3-watch/trace.jsonl --watch <watchId from the result> \
+python3 -I e2e/timeline.py ~/.config/agentping/trace.jsonl --watch <watchId from the result> \
   --receipt <time the bot's routine logged the request> \
   --continuation <time of the bot's first message or action naming the thread> \
   --bot <bot name>
@@ -217,12 +217,12 @@ Per scenario:
    question the bot may answer; approvals stay with the user).
 3. **Durable replay.** Make the receiver unreachable from the watcher host
    only (for example a firewall rule for its address), run a wait to
-   completion, confirm `t3-watch outbox list` holds the event and the trace
+   completion, confirm `agentping outbox list` holds the event and the trace
    shows failed attempts, restore reachability, and confirm the daemon's
    `outbox.attempt` with a 2xx, then the bot's receipt and continuation.
    The event id is the same in every attempt.
 4. **Native Linux.** Unpack the archive on the Linux host, check that
-   `t3-watch --version` prints the expected `rev`, run `e2e/live.sh` there
+   `agentping --version` prints the expected `rev`, run `e2e/live.sh` there
    against that host's T3, then scenarios 1 to 3 with that binary.
 
 ## Investigation notes (2026-11-06)
@@ -260,9 +260,9 @@ do not identify a cause. Candidates, and what would tell them apart:
    command after the watcher (`; curl ...`, a retry loop, a sleep), or the
    harness recording "ended" when it next collected output. Evidence: the
    exact outer command and the harness's own start and end records; this
-   build's `endedAt` shows when t3-watch itself finished.
+   build's `endedAt` shows when agentping itself finished.
 3. **An inherited pipe kept the shell open.** In v2, an `--on-settle` hook's
-   stdout and stderr were t3-watch's stderr; a background process started by
+   stdout and stderr were agentping's stderr; a background process started by
    the hook kept that pipe open, and a harness waiting for EOF would see the
    command "running" until the process exited. Evidence: whether v2 ran with
    `--on-settle`, and the process tree at the time. This build sends hook

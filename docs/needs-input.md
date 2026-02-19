@@ -4,7 +4,7 @@ A thread blocked on a question or an approval never finishes by itself. The
 wait ends at once with `event` and `outcome` `needs_input` and exit 5, in
 either completion mode, when the thread's status is `waiting` or its
 `pendingRequestCount` is above zero (an approval can block a run that still
-says `running`). That is never reported as completion, and t3-watch never
+says `running`). That is never reported as completion, and agentping never
 answers or approves anything: it can only call `t3_thread_wait`,
 `t3_thread_read` and `t3_pending_request` with `action` `list` or `read`.
 
