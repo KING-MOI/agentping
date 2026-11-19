@@ -30,7 +30,7 @@ With agentping, the agent starts `agentping wait` as a background command and en
 There is no tagged release yet, so build from source with Rust 1.85 or newer:
 
 ```bash
-git clone https://github.com/KING-MOI/agentping.git
+git clone https://github.com/pekkaiscool/agentping.git
 cd agentping
 cargo install --path . --locked
 ```
